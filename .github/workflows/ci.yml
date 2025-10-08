@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5.23.0
+        env:
+          NEO4J_AUTH: neo4j/password123
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p password123 'RETURN 1'" --health-interval 10s --health-timeout 10s --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/bin/pip install --upgrade pip
+          backend/.venv/bin/pip install -r backend/requirements.txt
+
+      - name: Ruff lint
+        run: backend/.venv/bin/ruff check backend
+
+      - name: Mypy type check
+        run: backend/.venv/bin/mypy backend
+
+      - name: Pytest
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: password123
+          NEO4J_DATABASE: neo4j
+          AUTH_TOKEN: ci-token
+          RATE_LIMIT_RPS: "100"
+          ALLOWED_ORIGINS: http://localhost:3000
+        run: backend/.venv/bin/pytest backend/tests --cov=backend/mcp_server --cov=backend/agent_integration --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_BACKEND_URL: http://localhost:8000
+        run: npm run build
+
+      - name: Build backend image
+        run: docker build -t ultimate-mcp-backend:ci backend
+
+      - name: Build frontend image
+        run: docker build -t ultimate-mcp-frontend:ci frontend

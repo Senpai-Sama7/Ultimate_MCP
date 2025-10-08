@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  neo4j:
+    image: neo4j:5.23.0
+    container_name: ultimate_mcp_neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password123}
+      - NEO4J_dbms_default__listen__address=0.0.0.0
+      - NEO4JLABS_PLUGINS=[]
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD", "cypher-shell", "--username", "neo4j", "--password", "${NEO4J_PASSWORD:-password123}", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ../backend
+    image: ultimate-mcp-backend:latest
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      - NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password123}
+      - NEO4J_DATABASE=${NEO4J_DATABASE:-neo4j}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - AUTH_TOKEN=${AUTH_TOKEN:-change-me}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-10}
+    ports:
+      - "8000:8000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  frontend:
+    build:
+      context: ../frontend
+    image: ultimate-mcp-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_BACKEND_URL=http://backend:8000
+    ports:
+      - "3000:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

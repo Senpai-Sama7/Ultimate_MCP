@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from ..database.models import TestResult
 from ..database.neo4j_client import Neo4jClient
-from ..utils.security import ensure_safe_python
+from ..utils.enhanced_security import ensure_safe_python
 from ..utils.validation import ensure_supported_language
 
 

@@ -11,7 +11,7 @@ from backend.mcp_server.tools import (
     GenerationRequest,
     LintRequest,
 )
-from backend.mcp_server.utils.security import SecurityViolationError
+from backend.mcp_server.utils.enhanced_security import SecurityViolationError
 from backend.mcp_server.utils.validation import PayloadValidationError
 
 

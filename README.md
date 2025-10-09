@@ -29,6 +29,14 @@ npx @ultimate-mcp/cli start
 
 The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. For offline or air-gapped usage you can still run it from this repo (`cd Ultimate_MCP/cli && npm install && node bin/ultimate-mcp.js …`). Override backend/frontend images by editing `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
 
+#### Common flags
+
+- `--backend-port`, `--frontend-port`, `--neo4j-http-port`, `--neo4j-bolt-port` customise the host ports and are written to `.env` so follow-up `start`, `stop`, and `upgrade` commands respect the overrides.
+- `--neo4j-password` lets you supply your own credential (must be ≥12 chars with letters and numbers) if you want to reuse an existing secret manager.
+- `--local-images` builds the backend/frontend from source instead of pulling container images.
+
+> **Heads-up:** The published defaults reference `ghcr.io/ultimate-mcp/*` images. Authenticate first (`docker login ghcr.io`) or run `npx @ultimate-mcp/cli init my-ultimate-mcp --local-images` from a repository checkout and copy the `backend/` and `frontend/` directories next to the generated deployment before calling `start`.
+
 ### Option 1 – Deploy script (from this repo)
 
 ```bash

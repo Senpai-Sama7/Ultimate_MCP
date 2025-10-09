@@ -6,6 +6,7 @@ import { initProject } from './commands/init.js';
 import { startProject } from './commands/start.js';
 import { stopProject } from './commands/stop.js';
 import { upgradeProject } from './commands/upgrade.js';
+import { DEFAULT_PORTS } from './config/defaults.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -24,6 +25,11 @@ program
   .option('--local-images', 'Build backend/frontend images locally instead of pulling release images', false)
   .option('--backend-image <name>', 'Override backend image reference')
   .option('--frontend-image <name>', 'Override frontend image reference')
+  .option('--backend-port <number>', `Host port exposed for the backend API (default ${DEFAULT_PORTS.backend})`)
+  .option('--frontend-port <number>', `Host port exposed for the frontend UI (default ${DEFAULT_PORTS.frontend})`)
+  .option('--neo4j-http-port <number>', `Host port exposed for the Neo4j browser (default ${DEFAULT_PORTS.neo4jHttp})`)
+  .option('--neo4j-bolt-port <number>', `Host port exposed for the Neo4j bolt protocol (default ${DEFAULT_PORTS.neo4jBolt})`)
+  .option('--neo4j-password <password>', 'Override the generated Neo4j password (must satisfy Neo4j password policy)')
   .action(async (directory, options) => {
     try {
       await initProject(directory, options);

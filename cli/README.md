@@ -16,3 +16,12 @@ npx @ultimate-mcp/cli start
 - `ultimate-mcp upgrade` – pull the latest images and restart the stack.
 
 The CLI stores generated secrets in `.env` (chmod `0600`) and uses Docker Compose for easy orchestration. The default configuration pulls published backend/frontend images; add `--local-images` when working directly from the source tree and you prefer local builds.
+
+### Initialization options
+
+- `--backend-port`, `--frontend-port`, `--neo4j-http-port`, `--neo4j-bolt-port` – change the host-side ports (stored in `.env` for future commands).
+- `--backend-image`, `--frontend-image` – override container image references.
+- `--neo4j-password` – reuse an existing password (must include letters and numbers and be at least 12 characters).
+- `--local-images` – build backend/frontend from source (requires `backend/` and `frontend/` next to the deployment directory).
+
+> **Registry access:** The default images live on `ghcr.io/ultimate-mcp/`. Run `docker login ghcr.io` with a token that has `read:packages`, or use `--local-images` from a repo checkout to build everything locally.

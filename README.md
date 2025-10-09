@@ -19,15 +19,18 @@ Production-ready Model Context Protocol (MCP) stack that bundles a FastAPI backe
 
 ## Quickstart
 
-### Option 0 – One-command install via `npx` (fastest)
+### Option 0 – Local CLI (fastest)
 
 ```bash
-npx @ultimate-mcp/cli init my-ultimate-mcp
-cd my-ultimate-mcp
-npx @ultimate-mcp/cli start
+git clone https://github.com/Senpai-Sama7/Ultimate_MCP.git
+cd Ultimate_MCP/cli
+npm install
+npm run smoke   # optional sanity check
+node bin/ultimate-mcp.js init ~/ultimate-mcp-demo
+node bin/ultimate-mcp.js start --project ~/ultimate-mcp-demo
 ```
 
-The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. By default it pulls `ghcr.io/ultimate-mcp/ultimate-mcp-backend:latest` and `ghcr.io/ultimate-mcp/ultimate-mcp-frontend:latest`; override with `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
+The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. When the package is published you’ll be able to use `npx @ultimate-mcp/cli`; for now run it from the cloned repo. Override backend/frontend images by editing `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
 
 ### Option 1 – Deploy script (from this repo)
 
@@ -47,6 +50,8 @@ Tear down with:
 ```bash
 docker compose --project-name ultimate-mcp --env-file .env.deploy -f deployment/docker-compose.yml down
 ```
+
+> **Port conflicts?** After the first run, edit `.env.deploy` and change `FRONTEND_HTTP_PORT`, `NEO4J_HTTP_PORT`, or `NEO4J_BOLT_PORT` before re-running `./deploy.sh`. The backend exposes port 8000 by default; the other ports are configurable via the env file.
 
 ### Option 2 – Manual developer setup
 

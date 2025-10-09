@@ -9,7 +9,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 import structlog
@@ -124,7 +124,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": "Internal server error",
                     "request_id": request_id,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
                 headers={"X-Request-ID": request_id},
             )
@@ -320,7 +320,7 @@ async def get_status() -> dict[str, Any]:
         "service": "Ultimate MCP Platform",
         "version": "2.0.0",
         "environment": config.environment,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime": time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0,
         "database": await neo4j_client.health_check() if neo4j_client else False,
         "security": {
@@ -417,7 +417,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         content={
             "error": exc.detail,
             "status_code": exc.status_code,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": request.url.path,
         },
     )
@@ -437,7 +437,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         status_code=500,
         content={
             "error": "Internal server error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": request.url.path,
         },
     )

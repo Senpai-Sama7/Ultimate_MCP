@@ -7,7 +7,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, cast
 
 import structlog
@@ -82,23 +82,20 @@ class Settings:
     """Application configuration loaded from environment variables."""
 
     def __init__(self) -> None:
-        from pydantic_settings import BaseSettings
-        from pydantic import Field
+        from pydantic_settings import BaseSettings, SettingsConfigDict
+        from pydantic import Field, AliasChoices
 
         class _Settings(BaseSettings):
-            neo4j_uri: str = Field(default="bolt://localhost:7687", env="NEO4J_URI")
-            neo4j_user: str = Field(default="neo4j", env="NEO4J_USER")
-            neo4j_password: str = Field(default="password123", env="NEO4J_PASSWORD")
-            neo4j_database: str = Field(default="neo4j", env="NEO4J_DATABASE")
-            allowed_origins: str = Field(default="http://localhost:3000", env="ALLOWED_ORIGINS")
-            auth_token: str = Field(default="change-me", env="AUTH_TOKEN")
-            rate_limit_rps: int = Field(default=10, env="RATE_LIMIT_RPS")
-            max_request_bytes: int = Field(default=524_288, env="MAX_REQUEST_BYTES")
+            model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
-            model_config = {
-                "env_file": ".env",
-                "case_sensitive": False,
-            }
+            neo4j_uri: str = Field(default="bolt://localhost:7687", validation_alias=AliasChoices("NEO4J_URI"))
+            neo4j_user: str = Field(default="neo4j", validation_alias=AliasChoices("NEO4J_USER"))
+            neo4j_password: str = Field(default="password123", validation_alias=AliasChoices("NEO4J_PASSWORD"))
+            neo4j_database: str = Field(default="neo4j", validation_alias=AliasChoices("NEO4J_DATABASE"))
+            allowed_origins: str = Field(default="http://localhost:3000", validation_alias=AliasChoices("ALLOWED_ORIGINS"))
+            auth_token: str = Field(default="change-me", validation_alias=AliasChoices("AUTH_TOKEN"))
+            rate_limit_rps: int = Field(default=10, validation_alias=AliasChoices("RATE_LIMIT_RPS"))
+            max_request_bytes: int = Field(default=524_288, validation_alias=AliasChoices("MAX_REQUEST_BYTES"))
 
         data = _Settings()
         self.neo4j_uri = data.neo4j_uri
@@ -351,7 +348,7 @@ async def health() -> dict[str, Any]:
     return {
         "service": "ok",
         "neo4j": await neo4j_client.health_check(),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 

@@ -61,7 +61,7 @@ git clone https://github.com/Senpai-Sama7/Ultimate_MCP.git
 cd Ultimate_MCP/backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements_enhanced.txt
+pip install -r requirements_enhanced.txt  # use Python ≤3.12 or skip if asyncpg build fails
 
 # Start Neo4j
 export NEO4J_PASSWORD=$(openssl rand -hex 16)

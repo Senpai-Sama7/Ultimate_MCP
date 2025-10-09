@@ -1,0 +1,4 @@
+incident_id,service_id,title,severity,status,opened_at,resolved_at,owner_id,summary,jira_id
+INC-20251007-001,SVC-MCP,"Execution sandbox latency spike",sev-1,in_progress,2025-10-07T10:58:00Z,,PERSON-003,"MicroVM boot time degraded after kernel patch deployment",JIRA-4321
+INC-20251006-004,SVC-API,"API gateway 502 errors",sev-2,resolved,2025-10-06T19:20:00Z,2025-10-06T20:05:00Z,PERSON-002,"Upstream timeout due to misconfigured circuit breaker",JIRA-4318
+INC-20251001-013,SVC-ANALYTICS,"Telemetry pipeline backlog",sev-3,resolved,2025-10-01T12:15:00Z,2025-10-01T14:40:00Z,PERSON-006,"Beam job stuck after schema migration mismatch",JIRA-4280

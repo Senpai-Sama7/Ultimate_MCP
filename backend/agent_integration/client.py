@@ -94,7 +94,7 @@ class OpenAIAgentBridge:
                 }
             ],
         )
-        return cast(str, getattr(agent, "id"))
+        return cast(str, agent.id)
 
     def run_prompt(self, agent_id: str, prompt: str) -> dict[str, Any]:
         run = self._client.responses.create(  # type: ignore[attr-defined]

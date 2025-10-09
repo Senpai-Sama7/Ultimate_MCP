@@ -1,20 +1,91 @@
+# Environment files
+.env
+.env.local
+.env.production
+*.env
+
+# Python
 __pycache__/
 *.py[cod]
-*.swp
-.env
-.venv
-venv/
-reports/
-.coverage
-htmlcov/
-node_modules/
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
 dist/
-frontend/node_modules/
-backend/.venv/
-.DS_Store
-.idea/
-.vscode/
-*.log
-coverage.xml
-pytest_cache/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Docker
+.dockerignore
+
+# Backup files
+*.backup
+*.dump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp

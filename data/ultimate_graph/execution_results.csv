@@ -1,0 +1,5 @@
+exec_id,module_id,created_at,language,return_code,stdout,stderr,duration_seconds,sandbox,triggered_by
+EXEC-20251007-001,MOD-MCP-EXEC,2025-10-07T11:10:00Z,python,0,"hello world","",0.05,firecracker,PERSON-002
+EXEC-20251007-002,MOD-MCP-EXEC,2025-10-07T11:12:00Z,python,1,"","Traceback (most recent call last): ValueError",0.03,firecracker,PERSON-004
+EXEC-20251007-003,MOD-MCP-EXEC,2025-10-07T11:18:00Z,python,0,"completed pipeline","",0.22,firecracker,PERSON-002
+EXEC-20251006-410,MOD-ANALYTICS-PIPELINE,2025-10-06T20:45:00Z,python,0,"ingested 25k events","",3.48,kubernetes,PERSON-006

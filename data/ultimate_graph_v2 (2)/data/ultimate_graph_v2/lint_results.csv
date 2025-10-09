@@ -1,0 +1,7 @@
+lint_id,module_id,created_at,functions,classes,imports,complexity,exit_code,warnings_count,errors_count,output_summary,artifact_url
+LINT-20251007-001,MOD-FRONTEND-UI,"2025-10-07T10:30:00Z","build_ui;render_dashboard","","react;axios",4.0,0,3,0,"UI shell passes lint with minor style warnings",https://artifacts.example.com/lint/LINT-20251007-001.html
+LINT-20251007-002,MOD-FRONTEND-MCPCLIENT,"2025-10-07T10:45:00Z","connect_stream;handle_retry","","sse-client;eventsource",5.2,1,1,1,"EventSource polyfill missing type definitions",https://artifacts.example.com/lint/LINT-20251007-002.html
+LINT-20251007-003,MOD-API-GATEWAY,"2025-10-07T11:05:00Z","route_request;resolve_service","GatewayRouter","Pydantic;httpx",3.6,0,0,0,"Gateway clean",https://artifacts.example.com/lint/LINT-20251007-003.html
+LINT-20251007-004,MOD-MCP-LINT,"2025-10-07T11:15:00Z","collect_rules;score_module","","ast;sqlalchemy",6.3,1,2,0,"Rule scoring flagged high complexity in exec sandbox",https://artifacts.example.com/lint/LINT-20251007-004.html
+LINT-20251007-005,MOD-MCP-EXEC,"2025-10-07T11:20:00Z","launch_microvm;stream_stdout","MicroVMSupervisor","asyncio;firecracker",7.1,0,4,0,"Sandbox functions ok but complexity creeping",https://artifacts.example.com/lint/LINT-20251007-005.html
+LINT-20251006-901,MOD-ANALYTICS-PIPELINE,"2025-10-06T23:05:00Z","ingest_events;write_metrics","","apache-beam;bigquery",4.8,0,1,0,"Pipeline clean",https://artifacts.example.com/lint/LINT-20251006-901.html

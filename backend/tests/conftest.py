@@ -10,7 +10,6 @@ from types import ModuleType
 from typing import Iterator
 
 import httpx
-import pytest
 import pytest_asyncio
 from neo4j import GraphDatabase
 

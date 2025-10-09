@@ -2,6 +2,8 @@
 
 This package provides a cross-platform installer and runtime manager for the Ultimate MCP stack.
 
+> Current release: **v0.1.1** – adds configurable host ports and Neo4j password validation so deployments work on shared machines without manual edits.
+
 ```bash
 npx @ultimate-mcp/cli init my-ultimate-mcp
 cd my-ultimate-mcp
@@ -19,7 +21,7 @@ The CLI stores generated secrets in `.env` (chmod `0600`) and uses Docker Compos
 
 ### Initialization options
 
-- `--backend-port`, `--frontend-port`, `--neo4j-http-port`, `--neo4j-bolt-port` – change the host-side ports (stored in `.env` for future commands).
+- `--backend-port`, `--frontend-port`, `--neo4j-http-port`, `--neo4j-bolt-port` – change the host-side ports (stored in `.env` for future commands); defaults match v0.1.1.
 - `--backend-image`, `--frontend-image` – override container image references.
 - `--neo4j-password` – reuse an existing password (must include letters and numbers and be at least 12 characters).
 - `--local-images` – build backend/frontend from source (requires `backend/` and `frontend/` next to the deployment directory).

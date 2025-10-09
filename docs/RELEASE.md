@@ -4,7 +4,8 @@ The Ultimate MCP release pipeline publishes Docker images and the npm CLI whenev
 
 ## 1. Prepare
 - Ensure `main` is green and contains the desired commits.
-- Update `cli/package.json` and any other versioned artifacts with the new semantic version (e.g., `0.2.0`).
+- Update `cli/package.json` / `package-lock.json` and any other versioned artifacts with the new semantic version (e.g., `0.2.0`).
+- Document headline changes (e.g., v0.1.1 adds port overrides + Neo4j password validation) so README and AGENTS stay accurate.
 - Update changelogs/documentation as required.
 
 ## 2. Authenticate
@@ -34,8 +35,8 @@ After the workflow succeeds, validate the published artifacts:
 ```bash
 npx @ultimate-mcp/cli@latest init smoke-release
 cd smoke-release
-npx @ultimate-mcp/cli start --detached
-curl http://localhost:8000/health
+npx @ultimate-mcp/cli start --backend-port 8100 --frontend-port 3300 --detached
+curl http://localhost:8100/health
 npx @ultimate-mcp/cli stop
 ```
 

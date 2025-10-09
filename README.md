@@ -27,6 +27,8 @@ cd my-ultimate-mcp
 npx @ultimate-mcp/cli start
 ```
 
+> Latest CLI: **v0.1.1** adds port override flags and Neo4j password validation so you can avoid collisions during local testing.
+
 The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. For offline or air-gapped usage you can still run it from this repo (`cd Ultimate_MCP/cli && npm install && node bin/ultimate-mcp.js …`). Override backend/frontend images by editing `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
 
 #### Common flags

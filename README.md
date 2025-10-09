@@ -19,18 +19,15 @@ Production-ready Model Context Protocol (MCP) stack that bundles a FastAPI backe
 
 ## Quickstart
 
-### Option 0 – Local CLI (fastest)
+### Option 0 – Published CLI (fastest)
 
 ```bash
-git clone https://github.com/Senpai-Sama7/Ultimate_MCP.git
-cd Ultimate_MCP/cli
-npm install
-npm run smoke   # optional sanity check
-node bin/ultimate-mcp.js init ~/ultimate-mcp-demo
-node bin/ultimate-mcp.js start --project ~/ultimate-mcp-demo
+npx @ultimate-mcp/cli init my-ultimate-mcp
+cd my-ultimate-mcp
+npx @ultimate-mcp/cli start
 ```
 
-The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. When the package is published you’ll be able to use `npx @ultimate-mcp/cli`; for now run it from the cloned repo. Override backend/frontend images by editing `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
+The CLI scaffolds a deployment directory, generates secrets, and launches Docker Compose. For offline or air-gapped usage you can still run it from this repo (`cd Ultimate_MCP/cli && npm install && node bin/ultimate-mcp.js …`). Override backend/frontend images by editing `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in the generated `.env` file if you host custom images.
 
 ### Option 1 – Deploy script (from this repo)
 

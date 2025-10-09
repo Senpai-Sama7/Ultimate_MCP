@@ -1,8 +1,0 @@
-person_id,name,role,email,timezone,team,skills
-PERSON-001,Donovan Price,Product Lead,donovan.price@example.com,America/Los_Angeles,Product,"roadmapping;stakeholder-management;ui-ux"
-PERSON-002,Riley Chen,Staff Software Engineer,riley.chen@example.com,America/New_York,Application Engineering,"python;fastapi;devrel"
-PERSON-003,Morgan Patel,Platform Engineer,morgan.patel@example.com,America/Chicago,Platform,"observability;terraform;kubernetes"
-PERSON-004,Avery Johnson,QA Lead,avery.johnson@example.com,America/Denver,Quality,"pytest;test-automation;release-management"
-PERSON-005,Jordan Singh,Security Engineer,jordan.singh@example.com,America/Toronto,Security,"threat-modeling;zero-trust;iam"
-PERSON-006,Casey Brown,Data Scientist,casey.brown@example.com,Europe/London,Analytics,"graph-algorithms;rag;mlops"
-PERSON-007,Harper Lee,Site Reliability Engineer,harper.lee@example.com,America/Los_Angeles,SRE,"slo-management;incident-response;golang"

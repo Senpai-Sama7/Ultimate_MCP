@@ -1,4 +1,0 @@
-gen_id,module_id,created_at,language,template_used,context_keys,output,token_count,review_status
-GEN-20251007-001,MOD-MCP-EXEC,2025-10-07T11:15:00Z,python,"def {{ name }}():\n    return {{ value }}","['name','value']","def answer():\n    return 42\n",18,approved
-GEN-20251007-002,MOD-MCP-TEST,2025-10-07T11:20:00Z,python,"pytest fixture for {{ target }}","['target']","@pytest.fixture\ndef neo4j_driver():\n    yield Driver()\n",45,pending-review
-GEN-20251006-310,MOD-FRONTEND-UI,2025-10-06T22:10:00Z,tsx,"React card for {{ metric }}","['metric']","export const ErrorBudgetCard = () => (\n  <Card>\n    <Title>Error Budget</Title>\n  </Card>\n);\n",62,approved

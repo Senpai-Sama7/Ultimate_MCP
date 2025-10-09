@@ -1,5 +1,0 @@
-service_id,name,description,owner_id,tier,status,last_deployed_at,repo_url,slo,error_budget_remaining
-SVC-FRONTEND,Ultimate MCP Frontend,"React/Vite UI for interacting with agents, tool runs, and knowledge graph dashboards",PERSON-001,tier-1,healthy,2025-10-06T22:15:00Z,https://github.com/Ultimate-MCP/frontend,99.5,12
-SVC-API,Ultimate MCP API Gateway,"FastAPI gateway exposing REST + MCP endpoints with auth, rate limiting, and logging",PERSON-002,tier-0,healthy,2025-10-06T21:48:00Z,https://github.com/Ultimate-MCP/backend,99.9,18
-SVC-MCP,Ultimate MCP Tooling Platform,"Sandboxed execution, lint, test, and code generation microservices",PERSON-003,tier-0,warning,2025-10-07T01:05:00Z,https://github.com/Ultimate-MCP/tooling,99.7,9
-SVC-ANALYTICS,Observability & Analytics,"Streaming telemetry ingestion and insight dashboards for Ultimate MCP",PERSON-006,tier-2,healthy,2025-10-05T18:32:00Z,https://github.com/Ultimate-MCP/analytics,99.0,21

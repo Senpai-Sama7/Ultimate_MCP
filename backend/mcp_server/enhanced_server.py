@@ -46,7 +46,12 @@ from .tools import (
     TestResponse,
     TestTool,
 )
-from .utils.enhanced_security import EnhancedSecurityManager, SecurityContext, SecurityLevel
+from .utils.enhanced_security import (
+    EnhancedSecurityManager,
+    RateLimitConfig,
+    SecurityContext,
+    SecurityLevel,
+)
 
 # Configure structured logging
 structlog.configure(
@@ -131,16 +136,26 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, security_manager: EnhancedSecurityManager):
         super().__init__(app)
         self.security_manager = security_manager
+        self.rate_limit_config = RateLimitConfig(
+            requests_per_minute=config.security.rate_limit_requests_per_minute,
+            requests_per_hour=config.security.rate_limit_requests_per_hour,
+            requests_per_day=config.security.rate_limit_requests_per_day,
+        )
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Apply security policies."""
         
         # Rate limiting
         client_ip = get_remote_address(request)
-        if not self.security_manager.check_rate_limit(
-            client_ip, 
-            config.security.rate_limit_requests_per_minute
-        ):
+        if client_ip is None:
+            client_ip = "unknown"
+
+        if not self.security_manager.check_rate_limit(client_ip, self.rate_limit_config):
+            logger.warning(
+                "Rate limit exceeded",
+                client_ip=client_ip,
+                path=request.url.path,
+            )
             return JSONResponse(
                 status_code=429,
                 content={"error": "Rate limit exceeded"},

@@ -1,0 +1,29 @@
+{
+  "name": "@ultimate-mcp/cli",
+  "version": "0.1.0",
+  "description": "Command line installer and manager for the Ultimate MCP platform",
+  "type": "module",
+  "bin": {
+    "ultimate-mcp": "bin/ultimate-mcp.js"
+  },
+  "scripts": {
+    "start": "node bin/ultimate-mcp.js",
+    "lint": "eslint src --ext .js",
+    "smoke": "node tests/smoke.js"
+  },
+  "keywords": [
+    "mcp",
+    "cli",
+    "docker",
+    "ultimate-mcp"
+  ],
+  "author": "Ultimate MCP Maintainers",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "5.3.0",
+    "commander": "11.1.0",
+    "fs-extra": "11.2.0",
+    "node-fetch": "3.3.2",
+    "ora": "7.0.1"
+  }
+}

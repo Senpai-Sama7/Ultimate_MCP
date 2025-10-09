@@ -177,7 +177,7 @@ SECRET_KEY=your-secret-key
 AUTH_TOKEN=your-auth-token
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=password123
+NEO4J_PASSWORD=generate-strong-password
 ENVIRONMENT=production
 ```
 

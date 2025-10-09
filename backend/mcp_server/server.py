@@ -65,16 +65,17 @@ class Settings:
 
     def __init__(self) -> None:
         from pydantic_settings import BaseSettings
+        from pydantic import Field
 
         class _Settings(BaseSettings):
-            neo4j_uri: str = "bolt://localhost:7687"
-            neo4j_user: str = "neo4j"
-            neo4j_password: str = "password123"
-            neo4j_database: str = "neo4j"
-            allowed_origins: str = "http://localhost:3000"
-            auth_token: str | None = None
-            rate_limit_rps: int = 10
-            max_request_bytes: int = 524_288
+            neo4j_uri: str = Field(default="bolt://localhost:7687", env="NEO4J_URI")
+            neo4j_user: str = Field(default="neo4j", env="NEO4J_USER")
+            neo4j_password: str = Field(default="password123", env="NEO4J_PASSWORD")
+            neo4j_database: str = Field(default="neo4j", env="NEO4J_DATABASE")
+            allowed_origins: str = Field(default="http://localhost:3000", env="ALLOWED_ORIGINS")
+            auth_token: str = Field(default="change-me", env="AUTH_TOKEN")
+            rate_limit_rps: int = Field(default=10, env="RATE_LIMIT_RPS")
+            max_request_bytes: int = Field(default=524_288, env="MAX_REQUEST_BYTES")
 
             model_config = {
                 "env_file": ".env",
@@ -91,6 +92,11 @@ class Settings:
             for origin in data.allowed_origins.split(",")
             if origin
         ]
+        if data.auth_token in {"", "change-me"}:
+            raise ValueError("AUTH_TOKEN must be set to a non-default value")
+        if data.neo4j_password in {"", "password123"}:
+            raise ValueError("NEO4J_PASSWORD must be set to a non-default value")
+
         self.auth_token = data.auth_token
         self.rate_limit_rps = data.rate_limit_rps
         self.max_request_bytes = data.max_request_bytes

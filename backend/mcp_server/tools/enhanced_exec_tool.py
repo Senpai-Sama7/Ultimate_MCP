@@ -6,7 +6,11 @@ import asyncio
 import hashlib
 import json
 import logging
-import resource
+# The resource module is POSIX-only; guard imports so Windows agents degrade gracefully.
+try:
+    import resource  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - Windows environments
+    resource = None  # type: ignore[assignment]
 import subprocess
 import sys
 import time
@@ -143,6 +147,10 @@ class EnhancedExecutionTool:
         
         # Enhanced security validation
         security_warnings = []
+        if resource is None:
+            security_warnings.append(
+                "POSIX resource module unavailable; OS-level execution limits not enforced"
+            )
         if request.language == "python":
             try:
                 ensure_safe_python(request.code, max_complexity=200)
@@ -190,35 +198,66 @@ class EnhancedExecutionTool:
                 **request.environment
             }
             
-            # Create resource-limited execution
+            def _preexec() -> None:
+                """Apply resource limits inside the child process before user code runs."""
+                if resource is None:
+                    return
+                # Memory limit
+                try:
+                    resource.setrlimit(
+                        resource.RLIMIT_AS, (limits.max_memory_mb * 1024 * 1024, limits.max_memory_mb * 1024 * 1024)
+                    )
+                except (ValueError, OSError):  # pragma: no cover - limit not supported
+                    pass
+                # CPU time
+                try:
+                    resource.setrlimit(resource.RLIMIT_CPU, (limits.max_cpu_time_seconds, limits.max_cpu_time_seconds))
+                except (ValueError, OSError):  # pragma: no cover
+                    pass
+                # Process and file descriptor ceilings
+                for limit_name, value in (
+                    ("RLIMIT_NPROC", limits.max_processes),
+                    ("RLIMIT_NOFILE", limits.max_open_files),
+                ):
+                    rlimit = getattr(resource, limit_name, None)
+                    if rlimit is None:
+                        continue
+                    try:
+                        resource.setrlimit(rlimit, (value, value))
+                    except (ValueError, OSError):  # pragma: no cover
+                        continue
+                # Limit file sizes written during execution
+                rlimit_fsize = getattr(resource, "RLIMIT_FSIZE", None)
+                if rlimit_fsize is not None:
+                    max_bytes = limits.max_file_size_mb * 1024 * 1024
+                    try:
+                        resource.setrlimit(rlimit_fsize, (max_bytes, max_bytes))
+                    except (ValueError, OSError):  # pragma: no cover
+                        pass
+
             cmd = [
-                sys.executable, 
-                "-c", 
-                f"""
-import resource
-import sys
-
-# Set resource limits
-resource.setrlimit(resource.RLIMIT_AS, ({limits.max_memory_mb * 1024 * 1024}, -1))
-resource.setrlimit(resource.RLIMIT_CPU, ({limits.max_cpu_time_seconds}, -1))
-resource.setrlimit(resource.RLIMIT_NPROC, ({limits.max_processes}, -1))
-resource.setrlimit(resource.RLIMIT_NOFILE, ({limits.max_open_files}, -1))
-
-# Execute user code
-exec(open('{script_path}').read())
-"""
+                sys.executable,
+                "-I",  # Isolated mode: ignore PYTHONPATH/user site-packages
+                "-B",  # Disable .pyc generation inside the sandbox
+                str(script_path),
             ]
             
             start_time = time.perf_counter()
             start_cpu = time.process_time()
             
             try:
+                kwargs: dict[str, Any] = {
+                    "stdout": asyncio.subprocess.PIPE,
+                    "stderr": asyncio.subprocess.PIPE,
+                    "cwd": sandbox_path,
+                    "env": env,
+                }
+                if resource is not None:
+                    kwargs["preexec_fn"] = _preexec  # type: ignore[assignment]
+
                 process = await asyncio.create_subprocess_exec(
                     *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    cwd=sandbox_path,
-                    env=env,
+                    **kwargs,
                 )
                 
                 stdout, stderr = await asyncio.wait_for(

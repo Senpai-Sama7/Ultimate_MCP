@@ -20,7 +20,7 @@ coverage==7.5.3
 
 # Enhanced security dependencies
 cryptography==41.0.7
-pyjwt==2.8.0
+pyjwt==2.9.0
 bcrypt==4.1.2
 passlib==1.7.4
 

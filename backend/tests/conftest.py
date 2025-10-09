@@ -16,7 +16,7 @@ from neo4j import GraphDatabase
 CONTAINER_NAME = "ultimate_mcp_neo4j_test"
 BOLT_PORT = 7688
 HTTP_PORT = 7475
-PASSWORD = "password123"
+PASSWORD = "test-password!"
 
 
 def _port_is_open(port: int) -> bool:
@@ -40,7 +40,7 @@ def neo4j_service() -> Iterator[str]:
             "-p",
             f"{HTTP_PORT}:7474",
             "-e",
-            "NEO4J_AUTH=neo4j/password123",
+            f"NEO4J_AUTH=neo4j/{PASSWORD}",
             "neo4j:5.23.0",
         ],
         check=True,

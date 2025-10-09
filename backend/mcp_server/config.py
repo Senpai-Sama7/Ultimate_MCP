@@ -14,13 +14,19 @@ class DatabaseConfig(BaseSettings):
     """Database configuration."""
     uri: str = Field(default="bolt://localhost:7687", env="NEO4J_URI")
     user: str = Field(default="neo4j", env="NEO4J_USER")
-    password: str = Field(default="password123", env="NEO4J_PASSWORD")
+    password: str = Field(env="NEO4J_PASSWORD")
     database: str = Field(default="neo4j", env="NEO4J_DATABASE")
     
     # Connection pool settings
     max_connection_lifetime: int = Field(default=300, env="NEO4J_MAX_CONNECTION_LIFETIME")
     max_connection_pool_size: int = Field(default=50, env="NEO4J_MAX_POOL_SIZE")
     connection_acquisition_timeout: int = Field(default=30, env="NEO4J_ACQUISITION_TIMEOUT")
+
+    @validator("password")
+    def validate_password(cls, value: str) -> str:
+        if not value or value == "password123":
+            raise ValueError("NEO4J_PASSWORD must be set to a non-default value")
+        return value
 
 
 class SecurityConfig(BaseSettings):

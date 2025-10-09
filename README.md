@@ -32,8 +32,8 @@ The CLI scaffolds a deployment directory, generates secrets, and launches Docker
 ### Option 1 – Deploy script (from this repo)
 
 ```bash
-git clone https://github.com/ultimate-mcp/ultimate-mcp-platform.git
-cd ultimate-mcp-platform
+git clone https://github.com/Senpai-Sama7/Ultimate_MCP.git
+cd Ultimate_MCP
 ./deploy.sh
 ```
 
@@ -52,8 +52,8 @@ docker compose --project-name ultimate-mcp --env-file .env.deploy -f deployment/
 
 ```bash
 # Clone and install backend
-git clone https://github.com/ultimate-mcp/ultimate-mcp-platform.git
-cd ultimate-mcp-platform/backend
+git clone https://github.com/Senpai-Sama7/Ultimate_MCP.git
+cd Ultimate_MCP/backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements_enhanced.txt

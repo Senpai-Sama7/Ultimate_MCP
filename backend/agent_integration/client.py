@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Callable, cast
 
@@ -25,8 +26,14 @@ class AgentToolResult:
 class AgentDiscovery:
     """High-level client that interacts with the MCP server over HTTP."""
 
-    def __init__(self, base_url: str, auth_token: str | None = None, timeout: float = 30.0) -> None:
-        self._base_url = base_url.rstrip("/")
+    def __init__(
+        self,
+        base_url: str | None = None,
+        auth_token: str | None = None,
+        timeout: float = 30.0,
+    ) -> None:
+        resolved = base_url or os.getenv("MCP_BASE_URL", "http://localhost:8000")
+        self._base_url = resolved.rstrip("/")
         headers: dict[str, str] = {}
         if auth_token:
             headers["Authorization"] = f"Bearer {auth_token}"
@@ -106,7 +113,7 @@ class OpenAIAgentBridge:
 
 async def demonstrate_agent_flow(
     *,
-    base_url: str,
+    base_url: str | None = None,
     auth_token: str | None = None,
     sample_code: str,
     on_result: Callable[[AgentToolResult], None] | None = None,

@@ -123,6 +123,45 @@ class EnhancedExecutionTool:
         self.cache = ExecutionCache()
         self.supported_languages = {"python", "javascript", "bash"}
         
+    @staticmethod
+    def _snapshot_usage():
+        if resource is None:
+            return None
+        try:
+            return resource.getrusage(resource.RUSAGE_CHILDREN)
+        except Exception:  # pragma: no cover - platform-specific failure
+            return None
+
+    @staticmethod
+    def _compute_usage_metrics(start_usage, language: str) -> dict[str, Any]:
+        metrics: dict[str, Any] = {"language": language}
+        if resource is None or start_usage is None:
+            return metrics
+        try:
+            end_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+        except Exception:  # pragma: no cover - platform-specific failure
+            return metrics
+
+        def _delta(attr: str) -> float:
+            return getattr(end_usage, attr, 0.0) - getattr(start_usage, attr, 0.0)
+
+        cpu_time = max(0.0, _delta("ru_utime") + _delta("ru_stime"))
+        io_ops = max(0, int(_delta("ru_inblock") + _delta("ru_oublock")))
+        peak_raw = max(0.0, end_usage.ru_maxrss - start_usage.ru_maxrss)
+        if sys.platform == "darwin":
+            memory_peak_mb = peak_raw / (1024 * 1024)
+        else:
+            memory_peak_mb = peak_raw / 1024
+
+        metrics.update(
+            {
+                "cpu_time": cpu_time,
+                "memory_peak_mb": round(memory_peak_mb, 3),
+                "io_operations": io_ops,
+            }
+        )
+        return metrics
+
     async def run(
         self, 
         request: ExecutionRequest, 
@@ -243,7 +282,7 @@ class EnhancedExecutionTool:
             ]
             
             start_time = time.perf_counter()
-            start_cpu = time.process_time()
+            start_rusage = self._snapshot_usage()
             
             try:
                 kwargs: dict[str, Any] = {
@@ -281,16 +320,10 @@ class EnhancedExecutionTool:
                 stderr = str(e).encode()
             
             duration = time.perf_counter() - start_time
-            cpu_time = time.process_time() - start_cpu
-            
-            # Create metrics
-            metrics = {
-                "cpu_time": cpu_time,
-                "memory_peak_mb": 0,  # Would need psutil for accurate measurement
-                "io_operations": 0,
-                "language": request.language,
-                "limits_applied": limits.__dict__,
-            }
+           metrics = self._compute_usage_metrics(start_rusage, request.language)
+           metrics["duration_seconds"] = duration
+           metrics["limits_applied"] = limits.__dict__
+            metrics.setdefault("cpu_time", duration)
             
             return ExecutionResponse(
                 id=str(uuid.uuid4()),
@@ -316,6 +349,7 @@ class EnhancedExecutionTool:
             cmd = ["node", "--max-old-space-size=128", str(script_path)]
             
             start_time = time.perf_counter()
+            start_rusage = self._snapshot_usage()
             
             try:
                 process = await asyncio.create_subprocess_exec(
@@ -345,15 +379,18 @@ class EnhancedExecutionTool:
                 stdout = b""
                 stderr = str(e).encode()
             
-            duration = time.perf_counter() - start_time
-            
+           duration = time.perf_counter() - start_time
+            metrics = self._compute_usage_metrics(start_rusage, "javascript")
+            metrics["duration_seconds"] = duration
+            metrics.setdefault("cpu_time", duration)
+
             return ExecutionResponse(
                 id=str(uuid.uuid4()),
                 return_code=return_code,
                 stdout=stdout.decode("utf-8", errors="replace"),
                 stderr=stderr.decode("utf-8", errors="replace"),
                 duration_seconds=duration,
-                metrics={"language": "javascript"},
+                metrics=metrics,
                 security_warnings=security_warnings,
             )
     
@@ -376,6 +413,7 @@ class EnhancedExecutionTool:
             cmd = ["bash", str(script_path)]
             
             start_time = time.perf_counter()
+            start_rusage = self._snapshot_usage()
             
             try:
                 process = await asyncio.create_subprocess_exec(
@@ -405,15 +443,18 @@ class EnhancedExecutionTool:
                 stdout = b""
                 stderr = str(e).encode()
             
-            duration = time.perf_counter() - start_time
-            
+           duration = time.perf_counter() - start_time
+            metrics = self._compute_usage_metrics(start_rusage, "bash")
+            metrics["duration_seconds"] = duration
+            metrics.setdefault("cpu_time", duration)
+
             return ExecutionResponse(
                 id=str(uuid.uuid4()),
                 return_code=return_code,
                 stdout=stdout.decode("utf-8", errors="replace"),
                 stderr=stderr.decode("utf-8", errors="replace"),
                 duration_seconds=duration,
-                metrics={"language": "bash"},
+                metrics=metrics,
                 security_warnings=security_warnings,
             )
     

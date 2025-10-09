@@ -114,6 +114,8 @@ Use the MCP tools `list_prompts` and `get_prompt` to retrieve the same definitio
 
 ---
 
+> Set `MCP_BASE_URL` to point agent clients (e.g. `export MCP_BASE_URL=https://mcp.example.com`). `AgentDiscovery` and the demo script default to this value.
+
 ## Core API recipes
 
 > Replace `$AUTH_TOKEN` with the bearer token from `.env.deploy` or your own secret.

@@ -485,7 +485,7 @@ async def lint_code(
 ) -> JSONResponse:
     payload = LintRequest.model_validate(await request.json())
     result = await tool.run(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @router.post("/run_tests")
@@ -497,7 +497,7 @@ async def run_tests(
 ) -> JSONResponse:
     payload = TestRequest.model_validate(await request.json())
     result = await tool.run(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @router.post("/graph_upsert")
@@ -509,7 +509,7 @@ async def graph_upsert(
 ) -> JSONResponse:
     payload = GraphUpsertPayload.model_validate(await request.json())
     result = await tool.upsert(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @router.post("/graph_query")
@@ -520,7 +520,7 @@ async def graph_query(
 ) -> JSONResponse:
     payload = GraphQueryPayload.model_validate(await request.json())
     result = await tool.query(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @router.post("/execute_code")
@@ -532,7 +532,7 @@ async def execute_code(
 ) -> JSONResponse:
     payload = ExecutionRequest.model_validate(await request.json())
     result = await tool.run(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @router.post("/generate_code")
@@ -544,7 +544,7 @@ async def generate_code(
 ) -> JSONResponse:
     payload = GenerationRequest.model_validate(await request.json())
     result = await tool.run(payload)
-    return JSONResponse(result.model_dump())
+    return JSONResponse(result.model_dump(exclude_defaults=False))
 
 
 @mcp_server.tool(name="list_prompts", description="List the built-in system prompts.")

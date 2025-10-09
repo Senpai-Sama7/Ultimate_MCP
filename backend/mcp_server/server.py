@@ -18,6 +18,8 @@ from fastapi.routing import APIRouter
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastmcp import Context as MCPContext
 from fastmcp import FastMCP
+from pydantic import BaseModel, Field, AliasChoices
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -63,6 +65,113 @@ ExecutionResponse.model_rebuild()
 GenerationRequest.model_rebuild()
 GenerationResponse.model_rebuild()
 
+
+class PromptDefinition(BaseModel):
+    slug: str
+    title: str
+    body: str
+    tags: list[str] = Field(default_factory=list)
+
+
+class PromptCatalog(BaseModel):
+    prompts: list[PromptDefinition]
+
+
+class PromptRequest(BaseModel):
+    slug: str = Field(..., min_length=1, max_length=64)
+
+
+class PromptResponse(BaseModel):
+    prompt: PromptDefinition
+
+
+PromptDefinition.model_rebuild()
+PromptCatalog.model_rebuild()
+PromptRequest.model_rebuild()
+PromptResponse.model_rebuild()
+
+
+PROMPT_DEFINITIONS: list[PromptDefinition] = [
+    PromptDefinition(
+        slug="proceed",
+        title="Proceed (Senior Pair-Programmer)",
+        body=(
+            "Act as a senior pair-programmer. Proceed with the most logical next step. "
+            "Internally apply multi-pass reasoning over code semantics, the dependency graph, architectural constraints, "
+            "and algorithmic trade-offs. If context is missing, list the top three clarifying questions or make explicit "
+            "assumptions before acting."
+        ),
+        tags=["reasoning", "pair-programming"],
+    ),
+    PromptDefinition(
+        slug="evaluate",
+        title="Evaluate (Comprehensive Audit)",
+        body=(
+            "Act as a software architect with 20+ years of experience and PhD-level computer science expertise. "
+            "Perform a deep, low-level audit of the entire codebase and produce a consolidated evaluation using sequential, "
+            "chain-of-thought reasoning with semantic, architectural, and graph awareness. Provide actionable step-by-step "
+            "solutions with specifics, examples, prioritization, timelines, measurable success criteria, security/performance/"
+            "reliability/compliance coverage, and cross-team accountability. Do not make edits—return a cohesive document "
+            "mapping findings to an implementation roadmap, noting resource needs and dependency order."
+        ),
+        tags=["analysis", "architecture"],
+    ),
+    PromptDefinition(
+        slug="real-a",
+        title="Real-A (Production Delivery)",
+        body=(
+            "Act as a staff-level engineer delivering a production-ready solution—no simulations, mocks, placeholders, or MVPs."
+            " Respond only with: (1) Executive summary (≤5 bullets); (2) Exact artifacts to run (paths + commands); "
+            "(3) Verification steps and expected signals; (4) Results actually measured or mark UNVERIFIED with missing inputs; "
+            "(5) Follow-ups if any. Fail closed if verification is impossible."
+        ),
+        tags=["delivery", "execution"],
+    ),
+    PromptDefinition(
+        slug="test-a",
+        title="Test-A (CI Quality Runner)",
+        body=(
+            "Act as a CI quality runner. Execute the full test suite with coverage and produce an automated quality report."
+            " Internally reason but do not expose intermediate thoughts. Output (in order): commands/env vars to run; results summary"
+            " (total passed/failed/skipped, runtime); coverage (overall % + top 10 lowest files); flakiness & slow tests (retries + 10 slowest);"
+            " quality gate result; artifact locations. If execution is impossible, mark UNVERIFIED with required inputs. Never fabricate outputs."
+        ),
+        tags=["testing", "ci"],
+    ),
+    PromptDefinition(
+        slug="improve",
+        title="Improve (Holistic Refactor)",
+        body=(
+            "Act as a senior software architect. Fix, debug, refactor, enhance, and fully expand features where logical. "
+            "Apply layered, sequential reasoning with semantic, architectural, relational, and graph awareness. After each change,"
+            " verify behavior at micro and macro levels to maintain harmonious system operations. Do not use placeholders, TODOs, or mocks."
+        ),
+        tags=["refactor", "enhancement"],
+    ),
+    PromptDefinition(
+        slug="clean",
+        title="Clean (Repo Janitor)",
+        body=(
+            "Role: principal engineer acting as repo janitor. Goal: safely consolidate duplicates, quarantine noise in `.trash/`, refactor imports,"
+            " and update docs without data loss. Follow the detailed manifest/automation/verification rules (hash scans, reference scans, manifest.json,"
+            " restore.sh, guardrails, quality gate, etc.). Provide execution plan, dry-run report, scripts, codemods, documentation updates, verification,"
+            " guardrails, and summary. Mark unverified steps with prerequisites; never delete—always move to `.trash/<timestamp>/`."
+        ),
+        tags=["cleanup", "maintenance"],
+    ),
+    PromptDefinition(
+        slug="synthesize",
+        title="Synthesize (Systems Integration)",
+        body=(
+            "Act as a principal project manager and senior software architect. Analyze all systems/files/code and synthesize the best elements into a cohesive,"
+            " future-proof product. Ensure seamless workflow integration, robustness, and maturity."
+        ),
+        tags=["integration", "planning"],
+    ),
+]
+
+PROMPT_INDEX: dict[str, PromptDefinition] = {prompt.slug: prompt for prompt in PROMPT_DEFINITIONS}
+
 structlog.configure(
     processors=[
         structlog.processors.TimeStamper(fmt="iso"),
@@ -82,9 +191,6 @@ class Settings:
     """Application configuration loaded from environment variables."""
 
     def __init__(self) -> None:
-        from pydantic_settings import BaseSettings, SettingsConfigDict
-        from pydantic import Field, AliasChoices
-
         class _Settings(BaseSettings):
             model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
@@ -358,6 +464,19 @@ async def metrics() -> dict[str, Any]:
     return metrics.model_dump()
 
 
+@router.get("/prompts", response_model=list[PromptDefinition])
+async def list_prompts_route() -> list[PromptDefinition]:
+    return PROMPT_DEFINITIONS
+
+
+@router.get("/prompts/{slug}", response_model=PromptDefinition)
+async def get_prompt_route(slug: str) -> PromptDefinition:
+    prompt = PROMPT_INDEX.get(slug) or PROMPT_INDEX.get(slug.lower())
+    if prompt is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Prompt not found")
+    return prompt
+
+
 @router.post("/lint_code")
 @limiter.limit(RATE_LIMIT)
 async def lint_code(
@@ -426,6 +545,22 @@ async def generate_code(
     payload = GenerationRequest.model_validate(await request.json())
     result = await tool.run(payload)
     return JSONResponse(result.model_dump())
+
+
+@mcp_server.tool(name="list_prompts", description="List the built-in system prompts.")
+async def mcp_list_prompts(context: MCPContext) -> PromptCatalog:
+    await context.info("Returning prompt catalog", extra={"count": len(PROMPT_DEFINITIONS)})
+    return PromptCatalog(prompts=PROMPT_DEFINITIONS)
+
+
+@mcp_server.tool(name="get_prompt", description="Retrieve a built-in system prompt by slug.")
+async def mcp_get_prompt(payload: PromptRequest, context: MCPContext) -> PromptResponse:
+    slug = payload.slug.lower()
+    prompt = PROMPT_INDEX.get(slug)
+    if prompt is None:
+        raise ValueError(f"Unknown prompt slug: {payload.slug}")
+    await context.info("Returning prompt", extra={"slug": slug})
+    return PromptResponse(prompt=prompt)
 
 
 app.include_router(router)

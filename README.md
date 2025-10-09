@@ -103,6 +103,17 @@ Use it whenever you need a “show me it works” proof for MCP clients or demos
 
 ---
 
+## Built-in prompt library
+
+```
+curl http://localhost:8000/prompts | jq
+curl http://localhost:8000/prompts/proceed | jq '.body'
+```
+
+Use the MCP tools `list_prompts` and `get_prompt` to retrieve the same definitions from an MCP client.
+
+---
+
 ## Core API recipes
 
 > Replace `$AUTH_TOKEN` with the bearer token from `.env.deploy` or your own secret.

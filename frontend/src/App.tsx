@@ -33,9 +33,9 @@ function App() {
   const [code, setCode] = useState(INITIAL_CODE);
   const [language, setLanguage] = useState("python");
   const [token, setToken] = useState("");
-  const [template, setTemplate] = useState("def {{ name }}():
+  const [template, setTemplate] = useState(`def {{ name }}():
     return {{ value }}
-");
+`);
   const [templateContext, setTemplateContext] = useState('{"name": "answer", "value": 42}');
   const [graphNodes, setGraphNodes] = useState('[{"key":"App:1","labels":["Service"],"properties":{"name":"frontend"}}]');
   const [graphRelationships, setGraphRelationships] = useState('[{"start":"App:1","end":"App:1","type":"DEPENDS_ON","properties":{"weight":1}}]');

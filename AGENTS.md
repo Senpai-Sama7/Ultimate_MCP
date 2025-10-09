@@ -13,6 +13,7 @@
 - `docker compose -f deployment/docker-compose.yml up --build` runs the full stack with production-like hardening, followed by `python scripts/smoke_test.py --base-url http://localhost:8000` for verification.
 - `./deploy.sh` builds/pulls images, writes `.env.deploy`, and brings the stack up with Docker Compose; use the generated command in the README to tear it back down.
 - `npx @ultimate-mcp/cli init demo && cd demo && npx @ultimate-mcp/cli start` spins up a clean deployment using published Docker images; share this flow with new contributors.
+- `python demo/full_demo.py --auth-token $(grep '^AUTH_TOKEN=' .env.deploy | cut -d= -f2-)` exercises lint, execute, tests, graph upsert/query, code generation, and metrics in one run—use it for “show me it works” demos.
 - Track outstanding hardening work in `docs/SECURITY_BACKLOG.md` and link issues accordingly.
 
 ## Coding Style & Naming Conventions

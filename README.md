@@ -27,6 +27,17 @@ npx @ultimate-mcp/cli start
 
 The CLI scaffolds a ready-to-run project, generates secure credentials, and launches Docker Compose in under a minute. By default it pulls `ghcr.io/ultimate-mcp/ultimate-mcp-backend:latest` and `ghcr.io/ultimate-mcp/ultimate-mcp-frontend:latest`; override with `UMCP_BACKEND_IMAGE` / `UMCP_FRONTEND_IMAGE` in `.env` if you host images elsewhere. See `cli/README.md` for the full command reference.
 
+#### Exercise every API capability
+
+Once the stack is running, execute the end-to-end demo script (requires `requests`, install with `python -m pip install requests` if needed):
+
+```bash
+python demo/full_demo.py --base-url http://localhost:8000 \
+  --auth-token $(grep '^AUTH_TOKEN=' .env.deploy | cut -d= -f2-)
+```
+
+The script sequentially lints code, runs the sandbox, executes pytest, generates code, persists a graph relationship, queries Neo4j, and prints aggregate metrics so you can see every Model Context Protocol feature in action.
+
 ### Option 1: Docker (Recommended)
 ```bash
 # Clone and deploy in one go

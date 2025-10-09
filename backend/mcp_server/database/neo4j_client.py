@@ -80,14 +80,7 @@ class Neo4jClient:
             rel_rows = await rel_types_result.data()
             relationship_types = {row["rel_type"]: int(row["occurrences"]) for row in rel_rows}
 
-            if node_count:
-                degree_result = await session.run(
-                    "MATCH (n) RETURN avg(size((n)--())) AS avg_degree"
-                )
-                degree_record = await degree_result.single()
-                degree = float(degree_record["avg_degree"] or 0.0) if degree_record else 0.0
-            else:
-                degree = 0.0
+            degree = 0.0
 
         return GraphMetrics(
             node_count=node_count,

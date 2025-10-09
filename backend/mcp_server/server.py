@@ -11,8 +11,9 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, cast
 
 import structlog
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastmcp import Context as MCPContext
@@ -24,7 +25,10 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from ..agent_integration.client import AgentDiscovery
+try:
+    from ..agent_integration.client import AgentDiscovery
+except ImportError:  # pragma: no cover - running outside package namespace
+    from agent_integration.client import AgentDiscovery
 from .database.models import GraphQueryPayload, GraphUpsertPayload
 from .database.neo4j_client import Neo4jClient
 from .tools import (
@@ -44,6 +48,20 @@ from .tools import (
     TestResponse,
     TestTool,
 )
+
+# Ensure Pydantic models are fully built for runtime validation under Python 3.13.
+LintRequest.model_rebuild()
+LintResponse.model_rebuild()
+TestRequest.model_rebuild()
+TestResponse.model_rebuild()
+GraphUpsertPayload.model_rebuild()
+GraphUpsertResponse.model_rebuild()
+GraphQueryPayload.model_rebuild()
+GraphQueryResponse.model_rebuild()
+ExecutionRequest.model_rebuild()
+ExecutionResponse.model_rebuild()
+GenerationRequest.model_rebuild()
+GenerationResponse.model_rebuild()
 
 structlog.configure(
     processors=[
@@ -346,65 +364,71 @@ async def metrics() -> dict[str, Any]:
 @router.post("/lint_code")
 @limiter.limit(RATE_LIMIT)
 async def lint_code(
-    payload: LintRequest,
     request: Request,
     tool: LintTool = Depends(_get_lint_tool),
-) -> LintResponse:
-    return await tool.run(payload)
+) -> JSONResponse:
+    payload = LintRequest.model_validate(await request.json())
+    result = await tool.run(payload)
+    return JSONResponse(result.model_dump())
 
 
 @router.post("/run_tests")
 @limiter.limit(RATE_LIMIT)
 async def run_tests(
-    payload: TestRequest,
     request: Request,
     tool: TestTool = Depends(_get_test_tool),
     __: None = Depends(_require_auth),
-) -> TestResponse:
-    return await tool.run(payload)
+) -> JSONResponse:
+    payload = TestRequest.model_validate(await request.json())
+    result = await tool.run(payload)
+    return JSONResponse(result.model_dump())
 
 
 @router.post("/graph_upsert")
 @limiter.limit(RATE_LIMIT)
 async def graph_upsert(
-    payload: GraphUpsertPayload,
     request: Request,
     tool: GraphTool = Depends(_get_graph_tool),
     __: None = Depends(_require_auth),
-) -> GraphUpsertResponse:
-    return await tool.upsert(payload)
+) -> JSONResponse:
+    payload = GraphUpsertPayload.model_validate(await request.json())
+    result = await tool.upsert(payload)
+    return JSONResponse(result.model_dump())
 
 
 @router.post("/graph_query")
 @limiter.limit(RATE_LIMIT)
 async def graph_query(
-    payload: GraphQueryPayload,
     request: Request,
     tool: GraphTool = Depends(_get_graph_tool),
-) -> GraphQueryResponse:
-    return await tool.query(payload)
+) -> JSONResponse:
+    payload = GraphQueryPayload.model_validate(await request.json())
+    result = await tool.query(payload)
+    return JSONResponse(result.model_dump())
 
 
 @router.post("/execute_code")
 @limiter.limit(RATE_LIMIT)
 async def execute_code(
-    payload: ExecutionRequest,
     request: Request,
     tool: ExecutionTool = Depends(_get_exec_tool),
     __: None = Depends(_require_auth),
-) -> ExecutionResponse:
-    return await tool.run(payload)
+) -> JSONResponse:
+    payload = ExecutionRequest.model_validate(await request.json())
+    result = await tool.run(payload)
+    return JSONResponse(result.model_dump())
 
 
 @router.post("/generate_code")
 @limiter.limit(RATE_LIMIT)
 async def generate_code(
-    payload: GenerationRequest,
     request: Request,
     tool: GenerationTool = Depends(_get_gen_tool),
     __: None = Depends(_require_auth),
-) -> GenerationResponse:
-    return await tool.run(payload)
+) -> JSONResponse:
+    payload = GenerationRequest.model_validate(await request.json())
+    result = await tool.run(payload)
+    return JSONResponse(result.model_dump())
 
 
 app.include_router(router)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from typing import Any
 
@@ -167,7 +166,7 @@ class UltimateMCPConfig(BaseSettings):
                 raise ValueError("Metrics should be enabled in production")
 
 
-@lru_cache()
+@lru_cache
 def get_config() -> UltimateMCPConfig:
     """Get cached configuration instance."""
     config = UltimateMCPConfig()

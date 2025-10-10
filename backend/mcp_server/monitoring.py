@@ -119,7 +119,7 @@ class MetricsCollector:
             memory = psutil.virtual_memory()
             
             # Disk usage (root partition)
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             
             # Network stats
             network = psutil.net_io_counters()
@@ -279,7 +279,7 @@ class HealthChecker:
             memory_healthy = memory.percent < 90.0
             
             # Check disk usage
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             disk_healthy = disk.percent < 90.0
             
             overall_healthy = cpu_healthy and memory_healthy and disk_healthy

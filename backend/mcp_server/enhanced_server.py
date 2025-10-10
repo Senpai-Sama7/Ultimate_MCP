@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable
+from typing import Any, Callable
 
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRouter
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastmcp import Context as MCPContext
 from fastmcp import FastMCP
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -28,23 +25,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import config
 from .database.neo4j_client import Neo4jClient
-from .monitoring import MetricsCollector, HealthChecker
+from .monitoring import HealthChecker, MetricsCollector
 from .tools import (
     ExecutionRequest,
     ExecutionResponse,
     ExecutionTool,
-    GenerationRequest,
-    GenerationResponse,
-    GenerationTool,
-    GraphQueryResponse,
-    GraphTool,
-    GraphUpsertResponse,
-    LintRequest,
-    LintResponse,
-    LintTool,
-    TestRequest,
-    TestResponse,
-    TestTool,
 )
 from .utils.enhanced_security import (
     EnhancedSecurityManager,
@@ -321,7 +306,7 @@ async def get_status() -> dict[str, Any]:
         "version": "2.0.0",
         "environment": config.environment,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "uptime": time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0,
+        "uptime": time.time() - app.state.start_time if hasattr(app.state, "start_time") else 0,
         "database": await neo4j_client.health_check() if neo4j_client else False,
         "security": {
             "rate_limiting": True,

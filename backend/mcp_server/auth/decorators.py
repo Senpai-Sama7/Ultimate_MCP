@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from fastapi import HTTPException, Request, status
 
-from .rbac import Permission, RBACManager
+from .rbac import Permission
 
 
 def require_permission(resource: str, action: str) -> Callable:

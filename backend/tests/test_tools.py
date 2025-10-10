@@ -4,15 +4,14 @@ from types import ModuleType
 
 import httpx
 import pytest
-
-from backend.mcp_server.database.models import GraphQueryPayload
-from backend.mcp_server.tools import (
+from mcp_server.database.models import GraphQueryPayload
+from mcp_server.tools import (
     ExecutionRequest,
     GenerationRequest,
     LintRequest,
 )
-from backend.mcp_server.utils.enhanced_security import SecurityViolationError
-from backend.mcp_server.utils.validation import PayloadValidationError
+from mcp_server.utils.enhanced_security import SecurityViolationError
+from mcp_server.utils.validation import PayloadValidationError
 
 
 @pytest.mark.asyncio

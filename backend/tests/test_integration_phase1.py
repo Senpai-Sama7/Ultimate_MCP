@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-
 from mcp_server.auth import Role
 
 
@@ -111,7 +110,7 @@ def test_execute_code_requires_execute_permission(test_app):
 @pytest.mark.asyncio
 async def test_integration_with_jwt_and_rbac():
     """Test JWT and RBAC integration."""
-    from mcp_server.auth import JWTHandler, RBACManager, Role, Permission
+    from mcp_server.auth import JWTHandler, Permission, RBACManager
     
     # Create handlers
     jwt_handler = JWTHandler(secret_key="test-secret")

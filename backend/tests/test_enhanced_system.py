@@ -4,10 +4,9 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-
-from backend.mcp_server.config import UltimateMCPConfig
-from backend.mcp_server.monitoring import HealthChecker, MetricsCollector
-from backend.mcp_server.utils.enhanced_security import (
+from mcp_server.config import UltimateMCPConfig
+from mcp_server.monitoring import HealthChecker, MetricsCollector
+from mcp_server.utils.enhanced_security import (
     EnhancedSecurityManager,
     SecurityLevel,
     SecurityViolationError,
@@ -387,8 +386,8 @@ class TestIntegration:
         assert context.security_level == SecurityLevel.PUBLIC
         
         # 2. Rate limiting check
-        rate_limit_config = security_manager.rate_limits
-        # Would check rate limits here
+        # Verify rate limits are configured
+        assert security_manager.rate_limits is not None
         
         # 3. Code execution (mocked)
         execution_result = {

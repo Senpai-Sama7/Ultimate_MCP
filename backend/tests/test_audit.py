@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-
-from mcp_server.audit.logger import AuditEvent, AuditEventType, AuditLogger
+from mcp_server.audit.logger import AuditEventType, AuditLogger
 
 
 @pytest.fixture

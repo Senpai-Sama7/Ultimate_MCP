@@ -7,8 +7,7 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 import uvicorn
-
-from backend.agent_integration.client import AgentDiscovery
+from agent_integration.client import AgentDiscovery
 
 TEST_TOKEN = "test-token"
 

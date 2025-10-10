@@ -242,14 +242,14 @@ class EnhancedExecutionTool:
                     return
                 # Memory limit
                 try:
-                    resource.setrlimit(
-                        resource.RLIMIT_AS, (limits.max_memory_mb * 1024 * 1024, limits.max_memory_mb * 1024 * 1024)
-                    )
+                    mem_limit = limits.max_memory_mb * 1024 * 1024
+                    resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
                 except (ValueError, OSError):  # pragma: no cover - limit not supported
                     pass
                 # CPU time
                 try:
-                    resource.setrlimit(resource.RLIMIT_CPU, (limits.max_cpu_time_seconds, limits.max_cpu_time_seconds))
+                    cpu_limit = limits.max_cpu_time_seconds
+                    resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit, cpu_limit))
                 except (ValueError, OSError):  # pragma: no cover
                     pass
                 # Process and file descriptor ceilings
@@ -501,7 +501,11 @@ class EnhancedExecutionTool:
                 "security_warnings": result.security_warnings,
                 "cached": result.cached,
                 "user_id": security_context.user_id if security_context else None,
-                "security_level": security_context.security_level.value if security_context else "public",
+                "security_level": (
+                    security_context.security_level.value
+                    if security_context
+                    else "public"
+                ),
                 "created_at": time.time(),
             },
         )
@@ -521,11 +525,18 @@ class EnhancedExecutionTool:
         )
         
         if stats:
+            total_execs = stats[0]["total_executions"]
+            success_rate = (
+                stats[0]["successful_executions"] / total_execs if total_execs > 0 else 0
+            )
+            cache_hit_rate = (
+                stats[0]["cached_executions"] / total_execs if total_execs > 0 else 0
+            )
             return {
-                "total_executions": stats[0]["total_executions"],
+                "total_executions": total_execs,
                 "average_duration": stats[0]["avg_duration"],
-                "success_rate": stats[0]["successful_executions"] / stats[0]["total_executions"] if stats[0]["total_executions"] > 0 else 0,
-                "cache_hit_rate": stats[0]["cached_executions"] / stats[0]["total_executions"] if stats[0]["total_executions"] > 0 else 0,
+                "success_rate": success_rate,
+                "cache_hit_rate": cache_hit_rate,
                 "cache_size": len(self.cache.cache),
             }
         

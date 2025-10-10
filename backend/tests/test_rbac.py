@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-
 from mcp_server.auth.rbac import ROLE_PERMISSIONS, Permission, RBACManager, Role
 
 

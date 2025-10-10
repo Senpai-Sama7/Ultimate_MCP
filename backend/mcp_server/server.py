@@ -97,9 +97,10 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         title="Proceed (Senior Pair-Programmer)",
         body=(
             "Act as a senior pair-programmer. Proceed with the most logical next step. "
-            "Internally apply multi-pass reasoning over code semantics, the dependency graph, architectural constraints, "
-            "and algorithmic trade-offs. If context is missing, list the top three clarifying questions or make explicit "
-            "assumptions before acting."
+            "Internally apply multi-pass reasoning over code semantics, the dependency "
+            "graph, architectural constraints, and algorithmic trade-offs. If context is "
+            "missing, list the top three clarifying questions or make explicit assumptions "
+            "before acting."
         ),
         tags=["reasoning", "pair-programming"],
     ),
@@ -107,12 +108,15 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="evaluate",
         title="Evaluate (Comprehensive Audit)",
         body=(
-            "Act as a software architect with 20+ years of experience and PhD-level computer science expertise. "
-            "Perform a deep, low-level audit of the entire codebase and produce a consolidated evaluation using sequential, "
-            "chain-of-thought reasoning with semantic, architectural, and graph awareness. Provide actionable step-by-step "
-            "solutions with specifics, examples, prioritization, timelines, measurable success criteria, security/performance/"
-            "reliability/compliance coverage, and cross-team accountability. Do not make edits—return a cohesive document "
-            "mapping findings to an implementation roadmap, noting resource needs and dependency order."
+            "Act as a software architect with 20+ years of experience and PhD-level "
+            "computer science expertise. Perform a deep, low-level audit of the entire "
+            "codebase and produce a consolidated evaluation using sequential, chain-of-"
+            "thought reasoning with semantic, architectural, and graph awareness. Provide "
+            "actionable step-by-step solutions with specifics, examples, prioritization, "
+            "timelines, measurable success criteria, security/performance/reliability/"
+            "compliance coverage, and cross-team accountability. Do not make edits—return "
+            "a cohesive document mapping findings to an implementation roadmap, noting "
+            "resource needs and dependency order."
         ),
         tags=["analysis", "architecture"],
     ),
@@ -120,10 +124,12 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="real-a",
         title="Real-A (Production Delivery)",
         body=(
-            "Act as a staff-level engineer delivering a production-ready solution—no simulations, mocks, placeholders, or MVPs."
-            " Respond only with: (1) Executive summary (≤5 bullets); (2) Exact artifacts to run (paths + commands); "
-            "(3) Verification steps and expected signals; (4) Results actually measured or mark UNVERIFIED with missing inputs; "
-            "(5) Follow-ups if any. Fail closed if verification is impossible."
+            "Act as a staff-level engineer delivering a production-ready solution—no "
+            "simulations, mocks, placeholders, or MVPs. Respond only with: (1) Executive "
+            "summary (≤5 bullets); (2) Exact artifacts to run (paths + commands); (3) "
+            "Verification steps and expected signals; (4) Results actually measured or "
+            "mark UNVERIFIED with missing inputs; (5) Follow-ups if any. Fail closed if "
+            "verification is impossible."
         ),
         tags=["delivery", "execution"],
     ),
@@ -131,10 +137,13 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="test-a",
         title="Test-A (CI Quality Runner)",
         body=(
-            "Act as a CI quality runner. Execute the full test suite with coverage and produce an automated quality report."
-            " Internally reason but do not expose intermediate thoughts. Output (in order): commands/env vars to run; results summary"
-            " (total passed/failed/skipped, runtime); coverage (overall % + top 10 lowest files); flakiness & slow tests (retries + 10 slowest);"
-            " quality gate result; artifact locations. If execution is impossible, mark UNVERIFIED with required inputs. Never fabricate outputs."
+            "Act as a CI quality runner. Execute the full test suite with coverage and "
+            "produce an automated quality report. Internally reason but do not expose "
+            "intermediate thoughts. Output (in order): commands/env vars to run; results "
+            "summary (total passed/failed/skipped, runtime); coverage (overall % + top 10 "
+            "lowest files); flakiness & slow tests (retries + 10 slowest); quality gate "
+            "result; artifact locations. If execution is impossible, mark UNVERIFIED with "
+            "required inputs. Never fabricate outputs."
         ),
         tags=["testing", "ci"],
     ),
@@ -142,9 +151,11 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="improve",
         title="Improve (Holistic Refactor)",
         body=(
-            "Act as a senior software architect. Fix, debug, refactor, enhance, and fully expand features where logical. "
-            "Apply layered, sequential reasoning with semantic, architectural, relational, and graph awareness. After each change,"
-            " verify behavior at micro and macro levels to maintain harmonious system operations. Do not use placeholders, TODOs, or mocks."
+            "Act as a senior software architect. Fix, debug, refactor, enhance, and fully "
+            "expand features where logical. Apply layered, sequential reasoning with "
+            "semantic, architectural, relational, and graph awareness. After each change, "
+            "verify behavior at micro and macro levels to maintain harmonious system "
+            "operations. Do not use placeholders, TODOs, or mocks."
         ),
         tags=["refactor", "enhancement"],
     ),
@@ -152,10 +163,13 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="clean",
         title="Clean (Repo Janitor)",
         body=(
-            "Role: principal engineer acting as repo janitor. Goal: safely consolidate duplicates, quarantine noise in `.trash/`, refactor imports,"
-            " and update docs without data loss. Follow the detailed manifest/automation/verification rules (hash scans, reference scans, manifest.json,"
-            " restore.sh, guardrails, quality gate, etc.). Provide execution plan, dry-run report, scripts, codemods, documentation updates, verification,"
-            " guardrails, and summary. Mark unverified steps with prerequisites; never delete—always move to `.trash/<timestamp>/`."
+            "Role: principal engineer acting as repo janitor. Goal: safely consolidate "
+            "duplicates, quarantine noise in `.trash/`, refactor imports, and update docs "
+            "without data loss. Follow the detailed manifest/automation/verification rules "
+            "(hash scans, reference scans, manifest.json, restore.sh, guardrails, quality "
+            "gate, etc.). Provide execution plan, dry-run report, scripts, codemods, "
+            "documentation updates, verification, guardrails, and summary. Mark unverified "
+            "steps with prerequisites; never delete—always move to `.trash/<timestamp>/`."
         ),
         tags=["cleanup", "maintenance"],
     ),
@@ -163,8 +177,9 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         slug="synthesize",
         title="Synthesize (Systems Integration)",
         body=(
-            "Act as a principal project manager and senior software architect. Analyze all systems/files/code and synthesize the best elements into a cohesive,"
-            " future-proof product. Ensure seamless workflow integration, robustness, and maturity."
+            "Act as a principal project manager and senior software architect. Analyze all "
+            "systems/files/code and synthesize the best elements into a cohesive, future-"
+            "proof product. Ensure seamless workflow integration, robustness, and maturity."
         ),
         tags=["integration", "planning"],
     ),
@@ -194,14 +209,31 @@ class Settings:
         class _Settings(BaseSettings):
             model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
-            neo4j_uri: str = Field(default="bolt://localhost:7687", validation_alias=AliasChoices("NEO4J_URI"))
-            neo4j_user: str = Field(default="neo4j", validation_alias=AliasChoices("NEO4J_USER"))
-            neo4j_password: str = Field(default="password123", validation_alias=AliasChoices("NEO4J_PASSWORD"))
-            neo4j_database: str = Field(default="neo4j", validation_alias=AliasChoices("NEO4J_DATABASE"))
-            allowed_origins: str = Field(default="http://localhost:3000", validation_alias=AliasChoices("ALLOWED_ORIGINS"))
-            auth_token: str = Field(default="change-me", validation_alias=AliasChoices("AUTH_TOKEN"))
-            rate_limit_rps: int = Field(default=10, validation_alias=AliasChoices("RATE_LIMIT_RPS"))
-            max_request_bytes: int = Field(default=524_288, validation_alias=AliasChoices("MAX_REQUEST_BYTES"))
+            neo4j_uri: str = Field(
+                default="bolt://localhost:7687", validation_alias=AliasChoices("NEO4J_URI")
+            )
+            neo4j_user: str = Field(
+                default="neo4j", validation_alias=AliasChoices("NEO4J_USER")
+            )
+            neo4j_password: str = Field(
+                default="password123", validation_alias=AliasChoices("NEO4J_PASSWORD")
+            )
+            neo4j_database: str = Field(
+                default="neo4j", validation_alias=AliasChoices("NEO4J_DATABASE")
+            )
+            allowed_origins: str = Field(
+                default="http://localhost:3000",
+                validation_alias=AliasChoices("ALLOWED_ORIGINS"),
+            )
+            auth_token: str = Field(
+                default="change-me", validation_alias=AliasChoices("AUTH_TOKEN")
+            )
+            rate_limit_rps: int = Field(
+                default=10, validation_alias=AliasChoices("RATE_LIMIT_RPS")
+            )
+            max_request_bytes: int = Field(
+                default=524_288, validation_alias=AliasChoices("MAX_REQUEST_BYTES")
+            )
 
         data = _Settings()
         self.neo4j_uri = data.neo4j_uri

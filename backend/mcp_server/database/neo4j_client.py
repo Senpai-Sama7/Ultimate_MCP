@@ -16,11 +16,32 @@ T = TypeVar("T")
 class Neo4jClient:
     """Minimal facade around the Neo4j async driver."""
 
-    def __init__(self, uri: str, user: str, password: str, database: str) -> None:
+    def __init__(
+        self,
+        uri: str,
+        user: str,
+        password: str,
+        database: str,
+        *,
+        max_connection_pool_size: int = 100,
+        connection_acquisition_timeout: float = 60.0,
+    ) -> None:
+        """Initialize Neo4j client with connection pooling.
+        
+        Args:
+            uri: Neo4j connection URI
+            user: Database user
+            password: Database password
+            database: Database name
+            max_connection_pool_size: Maximum connections in pool (default: 100)
+            connection_acquisition_timeout: Timeout for acquiring connection (default: 60s)
+        """
         self._driver = AsyncGraphDatabase.driver(
             uri,
             auth=(user, password),
             max_connection_lifetime=300,
+            max_connection_pool_size=max_connection_pool_size,
+            connection_acquisition_timeout=connection_acquisition_timeout,
         )
         self._database = database
 
@@ -91,11 +112,14 @@ class Neo4jClient:
         )
 
     async def _ensure_schema(self) -> None:
+        """Ensure database schema including constraints and indexes."""
         async with self._driver.session(database=self._database) as session:
             await session.execute_write(self._create_constraints)
+            await session.execute_write(self._create_performance_indexes)
 
     @staticmethod
     async def _create_constraints(tx: AsyncManagedTransaction, /) -> None:
+        """Create uniqueness constraints for result nodes."""
         statements = [
             (
                 "CREATE CONSTRAINT lint_result_id IF NOT EXISTS FOR "
@@ -114,6 +138,57 @@ class Neo4jClient:
                 "(r:GeneratedCode) REQUIRE r.id IS UNIQUE"
             ),
             "CREATE INDEX node_key IF NOT EXISTS FOR (n:GraphNode) ON (n.key)",
+        ]
+        for statement in statements:
+            await tx.run(statement)
+
+    @staticmethod
+    async def _create_performance_indexes(tx: AsyncManagedTransaction, /) -> None:
+        """Create performance indexes for common query patterns."""
+        statements = [
+            # Indexes for audit and security queries
+            (
+                "CREATE INDEX audit_event_timestamp IF NOT EXISTS FOR "
+                "(n:AuditEvent) ON (n.timestamp)"
+            ),
+            "CREATE INDEX audit_event_user IF NOT EXISTS FOR (n:AuditEvent) ON (n.user_id)",
+            "CREATE INDEX audit_event_type IF NOT EXISTS FOR (n:AuditEvent) ON (n.event_type)",
+            
+            # Indexes for execution results
+            (
+                "CREATE INDEX execution_timestamp IF NOT EXISTS FOR "
+                "(n:ExecutionResult) ON (n.timestamp)"
+            ),
+            (
+                "CREATE INDEX execution_code_hash IF NOT EXISTS FOR "
+                "(n:ExecutionResult) ON (n.code_hash)"
+            ),
+            (
+                "CREATE INDEX execution_language IF NOT EXISTS FOR "
+                "(n:ExecutionResult) ON (n.language)"
+            ),
+            
+            # Indexes for lint results
+            (
+                "CREATE INDEX lint_result_hash IF NOT EXISTS FOR "
+                "(n:LintResult) ON (n.code_hash)"
+            ),
+            (
+                "CREATE INDEX lint_result_timestamp IF NOT EXISTS FOR "
+                "(n:LintResult) ON (n.timestamp)"
+            ),
+            
+            # Indexes for test results
+            (
+                "CREATE INDEX test_result_timestamp IF NOT EXISTS FOR "
+                "(n:TestResult) ON (n.timestamp)"
+            ),
+            
+            # Composite index for common user + time queries
+            (
+                "CREATE INDEX execution_user_time IF NOT EXISTS FOR "
+                "(n:ExecutionResult) ON (n.user_id, n.timestamp)"
+            ),
         ]
         for statement in statements:
             await tx.run(statement)

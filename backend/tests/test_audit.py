@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-
-from mcp_server.audit.logger import AuditEvent, AuditEventType, AuditLogger
+from mcp_server.audit.logger import AuditEventType, AuditLogger
 
 
 @pytest.fixture
@@ -120,8 +119,8 @@ async def test_log_code_execution(audit_logger, mock_neo4j_client):
 
     assert parameters["event_type"] == "code_execution"
     assert parameters["duration_ms"] == 150.5
-    assert '"code_hash": "abc123"' in parameters["details"]
-    assert '"language": "python"' in parameters["details"]
+    assert parameters["details"]["code_hash"] == "abc123"
+    assert parameters["details"]["language"] == "python"
 
 
 @pytest.mark.asyncio

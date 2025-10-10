@@ -69,7 +69,9 @@ class JWTHandler:
         Raises:
             jwt.InvalidTokenError: If token is invalid
         """
-        return jwt.decode(token, self.secret_key, algorithms=[self.algorithm], issuer="ultimate-mcp")
+        return jwt.decode(
+            token, self.secret_key, algorithms=[self.algorithm], issuer="ultimate-mcp"
+        )
 
     def extract_roles(self, token: str) -> list[Role]:
         """Extract roles from JWT token.

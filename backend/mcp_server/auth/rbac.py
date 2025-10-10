@@ -15,7 +15,7 @@ class Role(Enum):
     ADMIN = "admin"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Permission:
     """Permission definition."""
 

@@ -3,8 +3,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
-from backend.mcp_server.server import (
+from mcp_server.server import (
     PROMPT_DEFINITIONS,
     PromptRequest,
     mcp_get_prompt,
@@ -29,10 +28,12 @@ async def test_prompt_endpoints(client):
 
 
 class _DummyContext:
-    async def info(self, message: str, extra: dict | None = None) -> None:  # pragma: no cover - simple stub
+    # pragma: no cover - simple stub
+    async def info(self, message: str, extra: dict | None = None) -> None:
         await asyncio.sleep(0)
 
-    async def debug(self, message: str, extra: dict | None = None) -> None:  # pragma: no cover
+    # pragma: no cover
+    async def debug(self, message: str, extra: dict | None = None) -> None:
         await asyncio.sleep(0)
 
 

@@ -217,7 +217,9 @@ class MetricsCollector:
                         if app_metrics.total_requests > 0 else 0.0
                     ),
                     "average_response_time": app_metrics.average_response_time,
-                    "requests_per_second": app_metrics.total_requests / uptime if uptime > 0 else 0.0,
+                    "requests_per_second": (
+                        app_metrics.total_requests / uptime if uptime > 0 else 0.0
+                    ),
                 },
                 "executions": {
                     "total": app_metrics.total_executions,

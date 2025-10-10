@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 import pytest
-
 from mcp_server.auth.jwt_handler import JWTHandler
 from mcp_server.auth.rbac import Role
 
@@ -22,7 +21,9 @@ def test_create_token_basic(jwt_handler):
     token = jwt_handler.create_token(user_id="user-123", roles=[Role.DEVELOPER])
 
     # Verify token can be decoded
-    payload = jwt.decode(token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp")
+    payload = jwt.decode(
+        token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp"
+    )
 
     assert payload["sub"] == "user-123"
     assert payload["roles"] == ["developer"]
@@ -33,18 +34,26 @@ def test_create_token_basic(jwt_handler):
 
 def test_create_token_multiple_roles(jwt_handler):
     """Test creating token with multiple roles."""
-    token = jwt_handler.create_token(user_id="user-123", roles=[Role.DEVELOPER, Role.ADMIN])
+    token = jwt_handler.create_token(
+        user_id="user-123", roles=[Role.DEVELOPER, Role.ADMIN]
+    )
 
-    payload = jwt.decode(token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp")
+    payload = jwt.decode(
+        token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp"
+    )
 
     assert payload["roles"] == ["developer", "admin"]
 
 
 def test_create_token_custom_expiration(jwt_handler):
     """Test creating token with custom expiration."""
-    token = jwt_handler.create_token(user_id="user-123", roles=[Role.VIEWER], expires_in_hours=48)
+    token = jwt_handler.create_token(
+        user_id="user-123", roles=[Role.VIEWER], expires_in_hours=48
+    )
 
-    payload = jwt.decode(token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp")
+    payload = jwt.decode(
+        token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp"
+    )
 
     # Check expiration is approximately 48 hours from now
     exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
@@ -62,7 +71,9 @@ def test_create_token_additional_claims(jwt_handler):
         additional_claims={"email": "user@example.com", "org": "test-org"},
     )
 
-    payload = jwt.decode(token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp")
+    payload = jwt.decode(
+        token, "test-secret-key-12345", algorithms=["HS256"], issuer="ultimate-mcp"
+    )
 
     assert payload["email"] == "user@example.com"
     assert payload["org"] == "test-org"
@@ -182,9 +193,11 @@ def test_extract_roles_invalid_role_value(jwt_handler):
         algorithm="HS256",
     )
 
-    # Should skip invalid role and default to viewer
+    # Should skip invalid role and keep valid ones
     roles = jwt_handler.extract_roles(token)
-    assert Role.VIEWER in roles
+    assert Role.DEVELOPER in roles
+    assert len(roles) == 1  # Only developer, invalid_role is skipped
+
 
 
 def test_jwt_handler_different_algorithm():

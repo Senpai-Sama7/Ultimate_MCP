@@ -221,7 +221,9 @@ def ensure_safe_python(code: str, max_complexity: int = 100) -> None:
     # Check complexity
     complexity = sum(1 for _ in ast.walk(tree))
     if complexity > max_complexity:
-        raise SecurityViolationError(f"Code complexity ({complexity}) exceeds limit ({max_complexity})")
+        raise SecurityViolationError(
+            f"Code complexity ({complexity}) exceeds limit ({max_complexity})"
+        )
     
     # Check imports
     for node in ast.walk(tree):

@@ -78,12 +78,12 @@ def server_module(neo4j_service: str) -> ModuleType:
     os.environ["ALLOWED_ORIGINS"] = "http://localhost"
     os.environ["AUTH_TOKEN"] = "test-token"
     os.environ["RATE_LIMIT_RPS"] = "50"
-    module = importlib.import_module("backend.mcp_server.server")
+    module = importlib.import_module("mcp_server.server")
     return module
 
 
 @pytest_asyncio.fixture
 async def client(server_module: ModuleType) -> AsyncIterator[httpx.AsyncClient]:
-    transport = httpx.ASGITransport(app=server_module.app, lifespan="on")  # type: ignore[arg-type]
+    transport = httpx.ASGITransport(app=server_module.app)  # type: ignore[arg-type]
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

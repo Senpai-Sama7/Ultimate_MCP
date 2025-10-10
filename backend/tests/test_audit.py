@@ -119,8 +119,8 @@ async def test_log_code_execution(audit_logger, mock_neo4j_client):
 
     assert parameters["event_type"] == "code_execution"
     assert parameters["duration_ms"] == 150.5
-    assert '"code_hash": "abc123"' in parameters["details"]
-    assert '"language": "python"' in parameters["details"]
+    assert parameters["details"]["code_hash"] == "abc123"
+    assert parameters["details"]["language"] == "python"
 
 
 @pytest.mark.asyncio

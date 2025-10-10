@@ -193,9 +193,11 @@ def test_extract_roles_invalid_role_value(jwt_handler):
         algorithm="HS256",
     )
 
-    # Should skip invalid role and default to viewer
+    # Should skip invalid role and keep valid ones
     roles = jwt_handler.extract_roles(token)
-    assert Role.VIEWER in roles
+    assert Role.DEVELOPER in roles
+    assert len(roles) == 1  # Only developer, invalid_role is skipped
+
 
 
 def test_jwt_handler_different_algorithm():

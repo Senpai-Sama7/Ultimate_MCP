@@ -138,7 +138,7 @@ class AuditLogger:
             "resource": event.resource,
             "action": event.action,
             "success": event.success,
-            "details": json.dumps(event.details),
+            "details": event.details,
             "request_id": event.request_id,
             "session_id": event.session_id,
             "duration_ms": event.duration_ms,

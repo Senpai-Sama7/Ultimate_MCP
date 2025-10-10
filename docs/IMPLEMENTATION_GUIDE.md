@@ -356,10 +356,20 @@ class JWTHandler:
         """
         try:
             payload = self.verify_token(token)
-            role_strings = payload.get("roles", ["viewer"])
-            return [Role(role) for role in role_strings]
-        except (jwt.InvalidTokenError, ValueError):
-            return [Role.VIEWER]  # Default to viewer on error
+            role_strings = payload.get("roles", [])
+        
+            valid_roles = []
+            for role_str in role_strings:
+                try:
+                    valid_roles.append(Role(role_str))
+                except ValueError:
+                    # Optionally log the invalid role string for debugging
+                    # logger.warning(f"Invalid role '{role_str}' found in token.")
+                    pass
+        
+            return valid_roles or [Role.VIEWER]
+        except jwt.InvalidTokenError:
+            return [Role.VIEWER]  # Default to viewer on token error
 ```
 
 ### Step 4: Create Permission Decorator

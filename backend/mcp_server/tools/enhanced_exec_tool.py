@@ -6,12 +6,12 @@ import asyncio
 import hashlib
 import json
 import logging
+
 # The resource module is POSIX-only; guard imports so Windows agents degrade gracefully.
 try:
     import resource  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - Windows environments
     resource = None  # type: ignore[assignment]
-import subprocess
 import sys
 import time
 import uuid
@@ -23,7 +23,6 @@ from typing import Any, AsyncGenerator
 
 from pydantic import BaseModel, Field
 
-from ..database.models import ExecutionResult
 from ..database.neo4j_client_enhanced import EnhancedNeo4jClient
 from ..utils.enhanced_security import SecurityContext, SecurityLevel, ensure_safe_python
 
@@ -320,9 +319,9 @@ class EnhancedExecutionTool:
                 stderr = str(e).encode()
             
             duration = time.perf_counter() - start_time
-           metrics = self._compute_usage_metrics(start_rusage, request.language)
-           metrics["duration_seconds"] = duration
-           metrics["limits_applied"] = limits.__dict__
+            metrics = self._compute_usage_metrics(start_rusage, request.language)
+            metrics["duration_seconds"] = duration
+            metrics["limits_applied"] = limits.__dict__
             metrics.setdefault("cpu_time", duration)
             
             return ExecutionResponse(
@@ -379,7 +378,7 @@ class EnhancedExecutionTool:
                 stdout = b""
                 stderr = str(e).encode()
             
-           duration = time.perf_counter() - start_time
+            duration = time.perf_counter() - start_time
             metrics = self._compute_usage_metrics(start_rusage, "javascript")
             metrics["duration_seconds"] = duration
             metrics.setdefault("cpu_time", duration)
@@ -443,7 +442,7 @@ class EnhancedExecutionTool:
                 stdout = b""
                 stderr = str(e).encode()
             
-           duration = time.perf_counter() - start_time
+            duration = time.perf_counter() - start_time
             metrics = self._compute_usage_metrics(start_rusage, "bash")
             metrics["duration_seconds"] = duration
             metrics.setdefault("cpu_time", duration)

@@ -1,18 +1,17 @@
 """Comprehensive tests for enhanced Ultimate MCP system."""
 
 import asyncio
-import json
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.mcp_server.config import UltimateMCPConfig
-from backend.mcp_server.monitoring import MetricsCollector, HealthChecker
+from backend.mcp_server.monitoring import HealthChecker, MetricsCollector
 from backend.mcp_server.utils.enhanced_security import (
-    EnhancedSecurityManager, 
-    SecurityContext, 
+    EnhancedSecurityManager,
     SecurityLevel,
+    SecurityViolationError,
     ensure_safe_python,
-    SecurityViolationError
 )
 
 

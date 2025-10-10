@@ -82,7 +82,16 @@ class JWTHandler:
         """
         try:
             payload = self.verify_token(token)
-            role_strings = payload.get("roles", ["viewer"])
-            return [Role(role) for role in role_strings]
-        except (jwt.InvalidTokenError, ValueError):
+            role_strings = payload.get("roles", [])
+        
+            roles = []
+            for role_str in role_strings:
+                try:
+                    roles.append(Role(role_str))
+                except ValueError:
+                    # Ignore invalid roles in the token
+                    pass
+        
+            return roles or [Role.VIEWER]
+        except jwt.InvalidTokenError:
             return [Role.VIEWER]  # Default to viewer on error

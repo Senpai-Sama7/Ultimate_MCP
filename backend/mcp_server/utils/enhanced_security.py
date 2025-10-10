@@ -7,9 +7,10 @@ import hashlib
 import hmac
 import secrets
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any
 
 import jwt
 from cryptography.fernet import Fernet
@@ -81,7 +82,7 @@ class EnhancedSecurityManager:
         try:
             return jwt.decode(token, self.secret_key, algorithms=["HS256"])
         except jwt.InvalidTokenError as e:
-            raise AuthenticationError(f"Invalid token: {e}")
+            raise AuthenticationError(f"Invalid token: {e}") from e
     
     def encrypt_sensitive_data(self, data: str) -> str:
         """Encrypt sensitive data."""

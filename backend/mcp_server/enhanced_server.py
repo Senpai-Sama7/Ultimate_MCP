@@ -7,10 +7,10 @@ import hashlib
 import logging
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -417,11 +417,11 @@ async def assign_user_role(
             "message": f"Role {role} assigned to user {user_id}",
         }
         
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid role: {role}. Must be one of: viewer, developer, admin",
-        )
+        ) from err
 
 
 @app.get("/api/v1/users/{user_id}/roles")
@@ -469,11 +469,11 @@ async def query_audit_log(
     if event_type:
         try:
             event_type_enum = AuditEventType(event_type)
-        except ValueError:
+        except ValueError as err:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid event type: {event_type}",
-            )
+            ) from err
     
     # Query audit log
     events = await audit_logger.query_audit_log(
@@ -566,7 +566,7 @@ async def execute_code(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Execution failed: {str(e)}",
-        )
+        ) from e
 
 
 # MCP integration with enhanced security

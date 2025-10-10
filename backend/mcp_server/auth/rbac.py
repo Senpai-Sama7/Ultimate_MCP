@@ -92,15 +92,11 @@ class RBACManager:
         Returns:
             True if user has permission
         """
+        user_permissions = set()
         for role in roles:
-            role_perms = self.get_role_permissions(role)
-            for perm in role_perms:
-                if (
-                    perm.resource == required_permission.resource
-                    and perm.action == required_permission.action
-                ):
-                    return True
-        return False
+            user_permissions.update(self.get_role_permissions(role))
+
+        return required_permission in user_permissions
 
     async def assign_role(self, user_id: str, role: Role) -> None:
         """Assign role to user.

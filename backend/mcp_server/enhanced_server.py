@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
 import uuid
@@ -23,6 +24,8 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from .audit import AuditLogger
+from .auth import JWTHandler, RBACManager, Role, require_permission
 from .config import config
 from .database.neo4j_client import Neo4jClient
 from .monitoring import HealthChecker, MetricsCollector
@@ -167,12 +170,16 @@ neo4j_client: Neo4jClient | None = None
 security_manager: EnhancedSecurityManager | None = None
 metrics_collector: MetricsCollector | None = None
 health_checker: HealthChecker | None = None
+audit_logger: AuditLogger | None = None
+rbac_manager: RBACManager | None = None
+jwt_handler: JWTHandler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Enhanced application lifespan with proper resource management."""
     global neo4j_client, security_manager, metrics_collector, health_checker
+    global audit_logger, rbac_manager, jwt_handler
     
     logger.info("Starting Ultimate MCP server", version="2.0.0")
     
@@ -196,6 +203,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Connect to database
         await neo4j_client.connect()
         logger.info("Database connection established")
+        
+        # Initialize Phase 1 components
+        audit_logger = AuditLogger(neo4j_client=neo4j_client)
+        rbac_manager = RBACManager(neo4j_client=neo4j_client)
+        jwt_handler = JWTHandler(secret_key=config.security.secret_key)
+        
+        # Store in app state for access in endpoints
+        app.state.audit_logger = audit_logger
+        app.state.rbac_manager = rbac_manager
+        app.state.jwt_handler = jwt_handler
+        
+        logger.info("Audit logging, RBAC, and JWT authentication initialized")
         
         # Start health monitoring
         asyncio.create_task(health_checker.start_monitoring())
@@ -257,14 +276,52 @@ async def get_security_context(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> SecurityContext:
-    """Get security context for request."""
+    """Get security context for request with JWT role extraction."""
     token = credentials.credentials if credentials else None
     
-    return security_manager.create_security_context(
+    # Create base security context
+    context = security_manager.create_security_context(
         token=token,
         ip_address=get_remote_address(request),
         user_agent=request.headers.get("user-agent"),
     )
+    
+    # Extract roles from JWT if token provided and JWT handler available
+    if token and jwt_handler:
+        try:
+            roles = jwt_handler.extract_roles(token)
+            # Add roles to context (store as attribute)
+            context.roles = roles
+            
+            # Log successful authentication
+            if audit_logger:
+                await audit_logger.log_authentication(
+                    success=True,
+                    user_id=context.user_id,
+                    ip_address=get_remote_address(request),
+                    user_agent=request.headers.get("user-agent"),
+                    request_id=str(uuid.uuid4()),
+                )
+        except Exception as e:
+            # Log failed authentication
+            if audit_logger:
+                await audit_logger.log_authentication(
+                    success=False,
+                    ip_address=get_remote_address(request),
+                    user_agent=request.headers.get("user-agent"),
+                    request_id=str(uuid.uuid4()),
+                    error_message=str(e),
+                )
+            # Set viewer role as default on error
+            context.roles = [Role.VIEWER]
+    else:
+        # No token, default to viewer
+        context.roles = [Role.VIEWER]
+    
+    # Store context in request state for permission decorators
+    request.state.security_context = context
+    
+    return context
 
 
 async def require_authentication(
@@ -312,19 +369,143 @@ async def get_status() -> dict[str, Any]:
             "rate_limiting": True,
             "authentication": True,
             "encryption": config.security.encryption_key is not None,
+            "rbac": rbac_manager is not None,
+            "audit_logging": audit_logger is not None,
         },
+    }
+
+
+# Role management endpoints
+@app.post("/api/v1/users/{user_id}/roles")
+@require_permission("system", "admin")
+async def assign_user_role(
+    user_id: str,
+    role: str,
+    request: Request,
+    security_context: SecurityContext = Depends(get_security_context),
+) -> dict[str, Any]:
+    """Assign role to user (admin only)."""
+    if not rbac_manager:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="RBAC manager not initialized",
+        )
+    
+    try:
+        # Validate role
+        role_enum = Role(role)
+        
+        # Assign role
+        await rbac_manager.assign_role(user_id, role_enum)
+        
+        # Log authorization grant
+        if audit_logger:
+            await audit_logger.log_authorization(
+                user_id=security_context.user_id,
+                resource="roles",
+                action="assign",
+                granted=True,
+                ip_address=get_remote_address(request),
+                request_id=str(uuid.uuid4()),
+                details={"target_user": user_id, "role": role},
+            )
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "role": role,
+            "message": f"Role {role} assigned to user {user_id}",
+        }
+        
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role: {role}. Must be one of: viewer, developer, admin",
+        )
+
+
+@app.get("/api/v1/users/{user_id}/roles")
+@require_permission("system", "admin")
+async def get_user_roles(
+    user_id: str,
+    request: Request,
+    security_context: SecurityContext = Depends(get_security_context),
+) -> dict[str, Any]:
+    """Get user roles (admin only)."""
+    if not rbac_manager:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="RBAC manager not initialized",
+        )
+    
+    roles = await rbac_manager.get_user_roles(user_id)
+    
+    return {
+        "user_id": user_id,
+        "roles": [role.value for role in roles],
+    }
+
+
+@app.get("/api/v1/audit")
+@require_permission("system", "admin")
+async def query_audit_log(
+    request: Request,
+    event_type: str | None = None,
+    user_id: str | None = None,
+    limit: int = 100,
+    security_context: SecurityContext = Depends(get_security_context),
+) -> dict[str, Any]:
+    """Query audit log (admin only)."""
+    if not audit_logger:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Audit logger not initialized",
+        )
+    
+    from .audit import AuditEventType
+    
+    # Parse event type if provided
+    event_type_enum = None
+    if event_type:
+        try:
+            event_type_enum = AuditEventType(event_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid event type: {event_type}",
+            )
+    
+    # Query audit log
+    events = await audit_logger.query_audit_log(
+        event_type=event_type_enum,
+        user_id=user_id,
+        limit=limit,
+    )
+    
+    return {
+        "total": len(events),
+        "limit": limit,
+        "filters": {
+            "event_type": event_type,
+            "user_id": user_id,
+        },
+        "events": events,
     }
 
 
 # Enhanced tool endpoints with security
 @app.post("/api/v1/execute", response_model=ExecutionResponse)
 @limiter.limit("10/minute")
+@require_permission("tools", "execute")
 async def execute_code(
     request: Request,
     execution_request: ExecutionRequest,
     security_context: SecurityContext = Depends(get_security_context),
 ) -> ExecutionResponse:
     """Execute code with enhanced security and monitoring."""
+    
+    start_time = time.time()
+    code_hash = hashlib.sha256(execution_request.code.encode()).hexdigest()
     
     # Check permissions for code execution
     if (security_context.security_level == SecurityLevel.PUBLIC and 
@@ -339,6 +520,21 @@ async def execute_code(
     try:
         result = await tool.run(execution_request)
         
+        # Calculate duration
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Log successful execution
+        if audit_logger:
+            await audit_logger.log_code_execution(
+                user_id=security_context.user_id,
+                code_hash=code_hash,
+                language=execution_request.language,
+                success=result.return_code == 0,
+                duration_ms=duration_ms,
+                ip_address=get_remote_address(request),
+                request_id=str(uuid.uuid4()),
+            )
+        
         # Record metrics
         if metrics_collector:
             await metrics_collector.record_execution(
@@ -351,6 +547,21 @@ async def execute_code(
         return result
         
     except Exception as e:
+        # Log failed execution
+        duration_ms = (time.time() - start_time) * 1000
+        
+        if audit_logger:
+            await audit_logger.log_code_execution(
+                user_id=security_context.user_id,
+                code_hash=code_hash,
+                language=execution_request.language,
+                success=False,
+                duration_ms=duration_ms,
+                ip_address=get_remote_address(request),
+                request_id=str(uuid.uuid4()),
+                error_message=str(e),
+            )
+        
         logger.error("Code execution failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

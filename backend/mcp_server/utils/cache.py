@@ -59,7 +59,7 @@ class CacheMetrics:
     @property
     def avg_set_time(self) -> float:
         """Calculate average set operation time."""
-        return self.total_set_time / self.evictions if self.evictions > 0 else 0.0
+        return self.total_set_time / self.sets if self.sets > 0 else 0.0
     
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary."""

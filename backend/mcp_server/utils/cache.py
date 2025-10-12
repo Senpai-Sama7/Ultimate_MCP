@@ -230,21 +230,32 @@ class InMemoryCache:
         Returns:
             Number of entries removed
         """
+        # Create a snapshot of items to check for expiry without holding the lock
+        # during the entire iteration.
+        items_snapshot = list(self._cache.items())
+        expired_keys = [
+            key for key, entry in items_snapshot
+            if entry.is_expired
+        ]
+
+        if not expired_keys:
+            return 0
+
         async with self._lock:
-            expired_keys = [
-                key for key, entry in self._cache.items()
-                if entry.is_expired
-            ]
-            
+            # Re-check for existence before deleting as entries might have been
+            # removed or updated since the snapshot was taken.
+            cleaned_count = 0
             for key in expired_keys:
-                del self._cache[key]
-                if key in self._access_order:
-                    self._access_order.remove(key)
-            
-            if expired_keys:
-                logger.info(f"Cleaned up {len(expired_keys)} expired entries")
-            
-            return len(expired_keys)
+                if key in self._cache and self._cache[key].is_expired:
+                    del self._cache[key]
+                    if key in self._access_order:
+                        self._access_order.remove(key)
+                    cleaned_count += 1
+        
+            if cleaned_count > 0:
+                logger.info(f"Cleaned up {cleaned_count} expired entries")
+        
+            return cleaned_count
     
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.

@@ -10,7 +10,7 @@ from pydantic import BaseModel, ValidationError
 _ALLOWED_LANGUAGES = {"python", "javascript", "bash"}
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]{0,63}$")
 _FORBIDDEN_CYPHER_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\bCALL\s+db\.|\\bCALL\\s+dbms\.", re.IGNORECASE),
+    re.compile(r"\bCALL\s+db\.|\bCALL\s+dbms\.", re.IGNORECASE),
     re.compile(r"\bDELETE\b", re.IGNORECASE),
     re.compile(r"\bDETACH\b", re.IGNORECASE),
     re.compile(r"\bREMOVE\b", re.IGNORECASE),

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "ultimate-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch",
+        "http://localhost:8000/mcp"
+      ],
+      "env": {
+        "AUTH_TOKEN": "5023cabb45e57ec1498a2f85b310c17cd295e6dd52c8acb0"
+      }
+    }
+  }
+}

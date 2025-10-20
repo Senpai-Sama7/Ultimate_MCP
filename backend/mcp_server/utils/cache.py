@@ -43,6 +43,8 @@ class CacheMetrics:
         self.errors = 0
         self.total_get_time = 0.0
         self.total_set_time = 0.0
+        self.gets = 0
+        self.sets = 0
     
     @property
     def hit_rate(self) -> float:
@@ -53,8 +55,7 @@ class CacheMetrics:
     @property
     def avg_get_time(self) -> float:
         """Calculate average get operation time."""
-        total_ops = self.hits + self.misses
-        return self.total_get_time / total_ops if total_ops > 0 else 0.0
+        return self.total_get_time / self.gets if self.gets > 0 else 0.0
     
     @property
     def avg_set_time(self) -> float:
@@ -68,6 +69,8 @@ class CacheMetrics:
             "misses": self.misses,
             "evictions": self.evictions,
             "errors": self.errors,
+            "gets": self.gets,
+            "sets": self.sets,
             "hit_rate": self.hit_rate,
             "avg_get_time_ms": self.avg_get_time * 1000,
             "avg_set_time_ms": self.avg_set_time * 1000,
@@ -119,6 +122,7 @@ class InMemoryCache:
         start_time = time.time()
         
         async with self._lock:
+            self.metrics.gets += 1
             entry = self._cache.get(key)
             
             if entry is None:
@@ -169,6 +173,7 @@ class InMemoryCache:
         
         async with self._lock:
             # Evict if at capacity
+            self.metrics.sets += 1
             if key not in self._cache and len(self._cache) >= self.max_size:
                 await self._evict_lru()
             

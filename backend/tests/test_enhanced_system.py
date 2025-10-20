@@ -8,6 +8,7 @@ from mcp_server.config import UltimateMCPConfig
 from mcp_server.monitoring import HealthChecker, MetricsCollector
 from mcp_server.utils.enhanced_security import (
     EnhancedSecurityManager,
+    RateLimitConfig,
     SecurityLevel,
     SecurityViolationError,
     ensure_safe_python,
@@ -51,8 +52,6 @@ class TestEnhancedSecurity:
     
     def test_rate_limiting(self):
         """Test rate limiting functionality."""
-        from backend.mcp_server.utils.enhanced_security import RateLimitConfig
-        
         manager = EnhancedSecurityManager("test-secret-key")
         config = RateLimitConfig(requests_per_minute=2)
         

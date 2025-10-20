@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import ast
+import logging
 import re
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+logger = logging.getLogger(__name__)
+
 _ALLOWED_LANGUAGES = {"python", "javascript", "bash"}
-_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]{0,63}$")
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-:]{0,63}$")
 _FORBIDDEN_CYPHER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bCALL\s+db\.|\bCALL\s+dbms\.", re.IGNORECASE),
     re.compile(r"\bDELETE\b", re.IGNORECASE),
@@ -18,16 +22,200 @@ _FORBIDDEN_CYPHER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r";"),
 )
 
-# Security patterns for code validation
-_DANGEROUS_PYTHON_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\b__import__\s*\(", re.IGNORECASE),
-    re.compile(r"\beval\s*\(", re.IGNORECASE),
-    re.compile(r"\bexec\s*\(", re.IGNORECASE),
-    re.compile(r"\bcompile\s*\(", re.IGNORECASE),
-    re.compile(r"\bopen\s*\(.*['\"]w", re.IGNORECASE),
-    re.compile(r"\bos\.system\s*\(", re.IGNORECASE),
-    re.compile(r"\bsubprocess\.", re.IGNORECASE),
-)
+# Dangerous Python modules and functions for AST-based validation
+_DANGEROUS_MODULES: set[str] = {
+    "os",
+    "subprocess",
+    "sys",
+    "socket",
+    "http",
+    "urllib",
+    "urllib2",
+    "urllib3",
+    "requests",
+    "ftplib",
+    "smtplib",
+    "telnetlib",
+    "xmlrpc",
+    "pickle",
+    "shelve",
+    "marshal",
+    "code",
+    "codeop",
+    "pty",
+    "tty",
+    "termios",
+    "fcntl",
+    "resource",
+    "ctypes",
+    "cffi",
+    "importlib",
+    "imp",
+    "runpy",
+    "multiprocessing",
+    "threading",
+    "asyncio",
+}
+
+_DANGEROUS_FUNCTIONS: set[str] = {
+    "eval",
+    "exec",
+    "compile",
+    "__import__",
+    "execfile",
+    "input",  # Python 2 input is dangerous
+    "breakpoint",
+    "exit",
+    "quit",
+    "help",
+    "open",  # Can be dangerous for file I/O
+    "file",  # Python 2
+    "reload",
+    "vars",
+    "locals",
+    "globals",
+    "dir",
+    "getattr",
+    "setattr",
+    "delattr",
+    "hasattr",
+}
+
+_DANGEROUS_ATTRIBUTES: set[str] = {
+    "__builtins__",
+    "__globals__",
+    "__code__",
+    "__class__",
+    "__bases__",
+    "__subclasses__",
+    "__import__",
+    "__loader__",
+    "__spec__",
+    "__package__",
+    "func_globals",
+    "func_code",
+}
+
+
+class PythonSecurityChecker(ast.NodeVisitor):
+    """AST-based security checker for Python code.
+
+    Validates Python code by traversing the AST and checking for:
+    - Dangerous imports
+    - Dangerous function calls
+    - Dangerous attribute access
+    - Attempts to access internal Python structures
+    """
+
+    def __init__(self, strict: bool = False) -> None:
+        """Initialize security checker.
+
+        Args:
+            strict: If True, apply stricter rules (e.g., no file I/O at all)
+        """
+        self.strict = strict
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+
+    def visit_Import(self, node: ast.Import) -> None:
+        """Check Import statements."""
+        for alias in node.names:
+            module_name = alias.name.split(".")[0]  # Get top-level module
+            if module_name in _DANGEROUS_MODULES:
+                self.errors.append(
+                    f"Line {node.lineno}: Dangerous import of '{alias.name}' is not allowed"
+                )
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Check ImportFrom statements."""
+        if node.module:
+            module_name = node.module.split(".")[0]
+            if module_name in _DANGEROUS_MODULES:
+                self.errors.append(
+                    f"Line {node.lineno}: Dangerous import from '{node.module}' is not allowed"
+                )
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """Check function calls."""
+        func_name = self._get_call_name(node)
+
+        if func_name in _DANGEROUS_FUNCTIONS:
+            self.errors.append(
+                f"Line {node.lineno}: Call to dangerous function '{func_name}' is not allowed"
+            )
+
+        # Check for open() with write modes in strict mode
+        if self.strict and func_name == "open":
+            if len(node.args) >= 2:
+                mode_arg = node.args[1]
+                if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
+                    if any(m in mode_arg.value for m in ["w", "a", "x", "+"]):
+                        self.errors.append(
+                            f"Line {node.lineno}: File writing with open() is not allowed in strict mode"
+                        )
+
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        """Check attribute access."""
+        if node.attr in _DANGEROUS_ATTRIBUTES:
+            self.errors.append(
+                f"Line {node.lineno}: Access to dangerous attribute '{node.attr}' is not allowed"
+            )
+
+        # Check for attribute chains like obj.__class__.__bases__
+        if isinstance(node.value, ast.Attribute) and node.value.attr in _DANGEROUS_ATTRIBUTES:
+            self.errors.append(
+                f"Line {node.lineno}: Chained access to dangerous attributes is not allowed"
+            )
+
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        """Check name access."""
+        # Check for direct access to dangerous built-in names
+        if node.id in _DANGEROUS_ATTRIBUTES:
+            self.errors.append(
+                f"Line {node.lineno}: Access to dangerous name '{node.id}' is not allowed"
+            )
+        self.generic_visit(node)
+
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        """Check subscript operations (e.g., obj['key'])."""
+        # Check for __dict__ access via subscript
+        if isinstance(node.slice, ast.Constant):
+            if node.slice.value in _DANGEROUS_ATTRIBUTES:
+                self.errors.append(
+                    f"Line {node.lineno}: Subscript access to '{node.slice.value}' is not allowed"
+                )
+        self.generic_visit(node)
+
+    def _get_call_name(self, node: ast.Call) -> str:
+        """Extract function name from call node."""
+        if isinstance(node.func, ast.Name):
+            return node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            return node.func.attr
+        elif isinstance(node.func, ast.Call):
+            # Nested call like func()()
+            return self._get_call_name(node.func)
+        return ""
+
+    def check_code(self, tree: ast.AST) -> tuple[bool, list[str], list[str]]:
+        """Check code AST for security issues.
+
+        Args:
+            tree: Parsed AST tree
+
+        Returns:
+            Tuple of (is_safe, errors, warnings)
+        """
+        self.errors = []
+        self.warnings = []
+        self.visit(tree)
+        return (len(self.errors) == 0, self.errors, self.warnings)
 
 # File path validation
 _SAFE_PATH_RE = re.compile(r"^[A-Za-z0-9_\-/\.]+$")
@@ -96,36 +284,52 @@ def ensure_safe_cypher(query: str) -> None:
 
 
 def ensure_safe_python_code(code: str, *, strict: bool = False) -> None:
-    """Validate that Python code doesn't contain dangerous patterns.
-    
+    """Validate that Python code doesn't contain dangerous patterns using AST analysis.
+
+    This function performs comprehensive security validation by parsing the Python
+    code into an Abstract Syntax Tree (AST) and checking for:
+    - Dangerous imports (os, subprocess, socket, etc.)
+    - Dangerous function calls (eval, exec, __import__, etc.)
+    - Dangerous attribute access (__builtins__, __globals__, etc.)
+    - Attempts to access or manipulate internal Python structures
+
     Args:
         code: Python code to validate
-        strict: If True, apply stricter validation rules
-        
+        strict: If True, apply stricter rules (e.g., no file I/O, no threading)
+
     Raises:
-        CodeValidationError: If code contains dangerous patterns
+        CodeValidationError: If code contains dangerous patterns or fails to parse
     """
     if not code or not code.strip():
         raise CodeValidationError("Code must not be empty.")
-    
+
     if len(code) > 100_000:  # 100KB limit
         raise CodeValidationError("Code exceeds maximum size of 100KB.")
-    
-    for pattern in _DANGEROUS_PYTHON_PATTERNS:
-        if pattern.search(code):
-            raise CodeValidationError(
-                f"Code contains potentially dangerous pattern: {pattern.pattern}"
-            )
-    
-    if strict:
-        # Additional strict mode checks
-        if "import" in code.lower() and any(
-            dangerous in code.lower()
-            for dangerous in ["socket", "http", "urllib", "requests", "ftplib"]
-        ):
-            raise CodeValidationError(
-                "Code contains potentially dangerous network imports in strict mode."
-            )
+
+    # Parse code into AST
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        raise CodeValidationError(
+            f"Code contains syntax errors: {e.msg} at line {e.lineno}"
+        ) from e
+    except ValueError as e:
+        raise CodeValidationError(f"Code parsing failed: {str(e)}") from e
+
+    # Run security checker
+    checker = PythonSecurityChecker(strict=strict)
+    is_safe, errors, warnings = checker.check_code(tree)
+
+    # Log warnings but don't fail
+    for warning in warnings:
+        logger.warning(f"Code security warning: {warning}")
+
+    # Fail on any errors
+    if not is_safe:
+        error_summary = "; ".join(errors[:3])  # Show first 3 errors
+        if len(errors) > 3:
+            error_summary += f" (and {len(errors) - 3} more)"
+        raise CodeValidationError(f"Code contains security violations: {error_summary}")
 
 
 def ensure_safe_file_path(path: str) -> None:

@@ -12,11 +12,28 @@ from typing import Iterator
 import httpx
 import pytest_asyncio
 from neo4j import GraphDatabase
+from agent_integration.client import AgentDiscovery
+from mcp_server.tools import (
+    ExecutionTool,
+    GenerationTool,
+    GraphTool,
+    LintTool,
+    TestTool,
+)
 
 CONTAINER_NAME = "ultimate_mcp_neo4j_test"
 BOLT_PORT = 7688
 HTTP_PORT = 7475
 PASSWORD = "test-password!"
+
+# Ensure deterministic test configuration before modules import settings.
+os.environ.setdefault("NEO4J_URI", f"bolt://127.0.0.1:{BOLT_PORT}")
+os.environ.setdefault("NEO4J_USER", "neo4j")
+os.environ.setdefault("NEO4J_PASSWORD", PASSWORD)
+os.environ.setdefault("NEO4J_DATABASE", "neo4j")
+os.environ.setdefault("ALLOWED_ORIGINS", '["http://localhost"]')
+os.environ.setdefault("AUTH_TOKEN", "test-token")
+os.environ.setdefault("RATE_LIMIT_RPS", "50")
 
 
 def _port_is_open(port: int) -> bool:
@@ -75,7 +92,7 @@ def server_module(neo4j_service: str) -> ModuleType:
     os.environ["NEO4J_USER"] = "neo4j"
     os.environ["NEO4J_PASSWORD"] = PASSWORD
     os.environ["NEO4J_DATABASE"] = "neo4j"
-    os.environ["ALLOWED_ORIGINS"] = "http://localhost"
+    os.environ["ALLOWED_ORIGINS"] = '["http://localhost"]'
     os.environ["AUTH_TOKEN"] = "test-token"
     os.environ["RATE_LIMIT_RPS"] = "50"
     module = importlib.import_module("mcp_server.server")
@@ -84,6 +101,28 @@ def server_module(neo4j_service: str) -> ModuleType:
 
 @pytest_asyncio.fixture
 async def client(server_module: ModuleType) -> AsyncIterator[httpx.AsyncClient]:
-    transport = httpx.ASGITransport(app=server_module.app)  # type: ignore[arg-type]
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+    await server_module.neo4j_client.connect()
+    registry = server_module.registry
+    registry.lint = LintTool(server_module.neo4j_client)
+    registry.tests = TestTool(server_module.neo4j_client)
+    registry.graph = GraphTool(server_module.neo4j_client)
+    registry.execute = ExecutionTool(server_module.neo4j_client)
+    registry.generate = GenerationTool(server_module.neo4j_client)
+
+    app = server_module.app
+    app.state.settings = server_module.settings
+    app.state.neo4j = server_module.neo4j_client
+    app.state.tools = registry
+    app.state.agent_discovery = AgentDiscovery(base_url="http://localhost:8000")
+
+    transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type]
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            yield client
+    finally:
+        await server_module.neo4j_client.close()
+        registry.lint = None
+        registry.tests = None
+        registry.graph = None
+        registry.execute = None
+        registry.generate = None

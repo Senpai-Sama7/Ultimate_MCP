@@ -220,6 +220,8 @@ class MetricsCollector:
                     "requests_per_second": (
                         app_metrics.total_requests / uptime if uptime > 0 else 0.0
                     ),
+                    "authenticated_requests": app_metrics.authenticated_requests,
+                    "public_requests": app_metrics.public_requests,
                 },
                 "executions": {
                     "total": app_metrics.total_executions,

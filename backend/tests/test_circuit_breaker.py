@@ -293,6 +293,9 @@ async def test_half_open_max_calls_limit(circuit_breaker):
         asyncio.create_task(circuit_breaker.call(slow_func))
         for _ in range(circuit_breaker.config.half_open_max_calls)
     ]
+    
+    # Give the scheduled tasks a moment to acquire their HALF_OPEN slots
+    await asyncio.sleep(0)
 
     # Try one more - should be rejected
     with pytest.raises(CircuitBreakerError, match="max calls reached"):

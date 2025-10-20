@@ -47,7 +47,10 @@ class AgentDiscovery:
 
     async def invoke(self, name: str, arguments: dict[str, Any]) -> AgentToolResult:
         async with MCPClient(self._transport, timeout=self._timeout) as client:
-            result = await client.call_tool(name, arguments)
+            call_args = arguments or {}
+            if "payload" not in call_args:
+                call_args = {"payload": call_args}
+            result = await client.call_tool(name, call_args)
         blocks: list[Any] = []
         for block in result.content:
             if hasattr(block, "model_dump"):

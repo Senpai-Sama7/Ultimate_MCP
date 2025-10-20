@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from functools import wraps
 from typing import Any, Callable
 
@@ -67,6 +68,8 @@ def require_permission(resource: str, action: str) -> Callable:
                 )
 
             return await func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
 
         return wrapper
 

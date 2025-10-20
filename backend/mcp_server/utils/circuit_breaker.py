@@ -76,6 +76,7 @@ class CircuitBreaker:
         self._last_failure_time: float | None = None
         self._opened_at: float | None = None
         self._half_open_calls = 0
+        self._half_open_attempts = 0
         self._lock = asyncio.Lock()
         self.metrics = CircuitBreakerMetrics()
 
@@ -100,20 +101,12 @@ class CircuitBreaker:
         return self._state == CircuitState.HALF_OPEN
 
     async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> T:
-        """Execute function through circuit breaker.
-        
-        Args:
-            func: Function to execute
-            *args: Positional arguments for func
-            **kwargs: Keyword arguments for func
-            
-        Returns:
-            Function result
-            
-        Raises:
-            CircuitBreakerError: If circuit is open
-            Exception: If function raises an exception
-        """
+        """Execute function through circuit breaker."""
+        await asyncio.sleep(0)
+        return await self._execute(func, *args, **kwargs)
+
+    async def _execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> T:
+        """Internal execution helper that enforces breaker semantics."""
         async with self._lock:
             self.metrics.total_calls += 1
             
@@ -130,27 +123,31 @@ class CircuitBreaker:
             
             # In HALF_OPEN, limit concurrent calls
             if self._state == CircuitState.HALF_OPEN:
-                if self._half_open_calls >= self.config.half_open_max_calls:
+                if self._half_open_attempts >= self.config.half_open_max_calls:
                     self.metrics.rejected_calls += 1
                     raise CircuitBreakerError(
                         f"Circuit breaker '{self.name}' is HALF_OPEN "
                         f"with max calls reached"
                     )
+                self._half_open_attempts += 1
                 self._half_open_calls += 1
 
-        # Execute the function
-        try:
-            if asyncio.iscoroutinefunction(func):
+        # Execute the function outside the lock
+        if asyncio.iscoroutinefunction(func):
+            try:
                 result = await func(*args, **kwargs)
-            else:
+            except Exception as exc:
+                await self._on_failure(exc)
+                raise
+        else:
+            try:
                 result = func(*args, **kwargs)
-            
-            await self._on_success()
-            return result
-            
-        except Exception as e:
-            await self._on_failure(e)
-            raise
+            except Exception as exc:
+                await self._on_failure(exc)
+                raise
+
+        await self._on_success()
+        return result
 
     async def _on_success(self) -> None:
         """Handle successful call."""
@@ -159,10 +156,11 @@ class CircuitBreaker:
             self.metrics.last_success_time = time.time()
             
             if self._state == CircuitState.HALF_OPEN:
+                if self._half_open_calls > 0:
+                    self._half_open_calls -= 1
                 self._success_count += 1
                 if self._success_count >= self.config.success_threshold:
                     self._transition_to_closed()
-                self._half_open_calls -= 1
             else:
                 # Reset failure count on success in CLOSED state
                 self._failure_count = 0
@@ -218,6 +216,7 @@ class CircuitBreaker:
         self._state = CircuitState.HALF_OPEN
         self._success_count = 0
         self._half_open_calls = 0
+        self._half_open_attempts = 0
         self._record_transition(previous_state, CircuitState.HALF_OPEN)
         logger.info(
             f"Circuit breaker '{self.name}' entered HALF_OPEN state",
@@ -231,6 +230,8 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self._opened_at = None
+        self._half_open_calls = 0
+        self._half_open_attempts = 0
         self._record_transition(previous_state, CircuitState.CLOSED)
         logger.info(
             f"Circuit breaker '{self.name}' closed",

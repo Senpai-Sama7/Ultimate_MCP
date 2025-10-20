@@ -335,7 +335,7 @@ async def mcp_generate_code(payload: GenerationRequest, context: MCPContext) -> 
     return await registry.generate.run(payload)
 
 
-mcp_asgi = mcp_server.http_app(path="/mcp")
+mcp_asgi = mcp_server.http_app(path="/")
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -580,19 +580,27 @@ async def generate_code(
 
 
 @mcp_server.tool(name="list_prompts", description="List the built-in system prompts.")
-async def mcp_list_prompts(context: MCPContext) -> PromptCatalog:
+async def _mcp_list_prompts_tool(context: MCPContext) -> PromptCatalog:
     await context.info("Returning prompt catalog", extra={"count": len(PROMPT_DEFINITIONS)})
     return PromptCatalog(prompts=PROMPT_DEFINITIONS)
 
 
 @mcp_server.tool(name="get_prompt", description="Retrieve a built-in system prompt by slug.")
-async def mcp_get_prompt(payload: PromptRequest, context: MCPContext) -> PromptResponse:
+async def _mcp_get_prompt_tool(payload: PromptRequest, context: MCPContext) -> PromptResponse:
     slug = payload.slug.lower()
     prompt = PROMPT_INDEX.get(slug)
     if prompt is None:
         raise ValueError(f"Unknown prompt slug: {payload.slug}")
     await context.info("Returning prompt", extra={"slug": slug})
     return PromptResponse(prompt=prompt)
+
+
+async def mcp_list_prompts(context: MCPContext) -> PromptCatalog:
+    return await _mcp_list_prompts_tool.fn(context)
+
+
+async def mcp_get_prompt(payload: PromptRequest, context: MCPContext) -> PromptResponse:
+    return await _mcp_get_prompt_tool.fn(payload, context)
 
 
 app.include_router(router)

@@ -1,6 +1,6 @@
 {
   "name": "@ultimate-mcp/cli",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Command line installer and manager for the Ultimate MCP platform",
   "type": "module",
   "bin": {

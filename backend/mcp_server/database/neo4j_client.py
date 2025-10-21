@@ -3,12 +3,29 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Awaitable, Callable, TypeVar
 
 from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import Neo4jError, ServiceUnavailable, SessionExpired
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 from .models import GraphMetrics
+
+# Conditional import for circuit breaker to avoid circular dependency
+try:
+    from ..utils.circuit_breaker import CircuitBreakerRegistry, CircuitBreakerConfig
+    CIRCUIT_BREAKER_AVAILABLE = True
+except ImportError:
+    CIRCUIT_BREAKER_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -23,27 +40,76 @@ class Neo4jClient:
         password: str,
         database: str,
         *,
-        max_connection_pool_size: int = 100,
-        connection_acquisition_timeout: float = 60.0,
+        max_connection_pool_size: int | None = None,
+        connection_acquisition_timeout: float | None = None,
+        max_connection_lifetime: int = 3600,
+        enable_circuit_breaker: bool = True,
     ) -> None:
-        """Initialize Neo4j client with connection pooling.
-        
+        """Initialize Neo4j client with optimized connection pooling and resilience patterns.
+
         Args:
             uri: Neo4j connection URI
             user: Database user
             password: Database password
             database: Database name
-            max_connection_pool_size: Maximum connections in pool (default: 100)
-            connection_acquisition_timeout: Timeout for acquiring connection (default: 60s)
+            max_connection_pool_size: Maximum connections in pool (auto-calculated if None)
+            connection_acquisition_timeout: Timeout for acquiring connection (default: 5.0s)
+            max_connection_lifetime: Max lifetime of connections in seconds (default: 3600s)
+            enable_circuit_breaker: Enable circuit breaker pattern (default: True)
         """
+        # Auto-calculate optimal pool size if not provided
+        if max_connection_pool_size is None:
+            import multiprocessing
+            cpu_count = multiprocessing.cpu_count()
+            # Formula: pool_size = cpu_count * 2 + spare_connections
+            # Cap at 100 to prevent resource exhaustion
+            max_connection_pool_size = min(cpu_count * 2 + 4, 100)
+
+        # Use shorter timeout for fail-fast behavior
+        if connection_acquisition_timeout is None:
+            connection_acquisition_timeout = 5.0
+
         self._driver = AsyncGraphDatabase.driver(
             uri,
             auth=(user, password),
-            max_connection_lifetime=300,
+            max_connection_lifetime=max_connection_lifetime,
             max_connection_pool_size=max_connection_pool_size,
             connection_acquisition_timeout=connection_acquisition_timeout,
+            # Additional optimizations
+            keep_alive=True,  # Maintain connections with keepalive
+            connection_timeout=10.0,  # Initial connection timeout
+            max_transaction_retry_time=15.0,  # Max retry time for transactions
         )
         self._database = database
+
+        logger.info(
+            "Neo4j connection pool configured",
+            extra={
+                "max_pool_size": max_connection_pool_size,
+                "acquisition_timeout": connection_acquisition_timeout,
+                "max_lifetime": max_connection_lifetime,
+            }
+        )
+
+        # Initialize circuit breaker registry
+        if enable_circuit_breaker and CIRCUIT_BREAKER_AVAILABLE:
+            self.circuit_registry = CircuitBreakerRegistry()
+            self._read_breaker_config = CircuitBreakerConfig(
+                failure_threshold=5,
+                success_threshold=2,
+                timeout_seconds=30.0,
+                half_open_max_calls=3,
+            )
+            self._write_breaker_config = CircuitBreakerConfig(
+                failure_threshold=3,  # More strict for writes
+                success_threshold=2,
+                timeout_seconds=60.0,
+                half_open_max_calls=2,
+            )
+            logger.info("Circuit breaker enabled for Neo4j client")
+        else:
+            self.circuit_registry = None
+            logger.info("Circuit breaker disabled for Neo4j client")
 
     async def connect(self) -> None:
         await self._driver.verify_connectivity()
@@ -55,6 +121,44 @@ class Neo4jClient:
     async def execute_read(
         self, query: str, parameters: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
+        """Execute read query with circuit breaker and retry logic.
+
+        Features:
+        - Circuit breaker protection (fails fast when service is down)
+        - Automatic retry with exponential backoff on transient failures
+        - Comprehensive error logging
+
+        Args:
+            query: Cypher query string
+            parameters: Query parameters
+
+        Returns:
+            List of result records
+
+        Raises:
+            CircuitBreakerError: When circuit is open (service is down)
+            Neo4jError: After exhausting retries
+        """
+        if self.circuit_registry:
+            breaker = await self.circuit_registry.get_or_create(
+                "neo4j_read",
+                self._read_breaker_config
+            )
+            return await breaker.call(self._execute_read_internal, query, parameters)
+        else:
+            return await self._execute_read_internal(query, parameters)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ServiceUnavailable, SessionExpired)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def _execute_read_internal(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Internal read implementation with retry logic."""
         params = parameters or {}
         async with self._driver.session(database=self._database) as session:
             result = await session.run(query, **params)
@@ -62,6 +166,39 @@ class Neo4jClient:
             return records
 
     async def execute_write(self, query: str, parameters: dict[str, Any] | None = None) -> None:
+        """Execute write query with circuit breaker and retry logic.
+
+        Features:
+        - Circuit breaker protection (stricter thresholds for writes)
+        - Automatic retry with exponential backoff on transient failures
+        - Comprehensive error logging
+
+        Args:
+            query: Cypher query string
+            parameters: Query parameters
+
+        Raises:
+            CircuitBreakerError: When circuit is open (service is down)
+            Neo4jError: After exhausting retries
+        """
+        if self.circuit_registry:
+            breaker = await self.circuit_registry.get_or_create(
+                "neo4j_write",
+                self._write_breaker_config
+            )
+            return await breaker.call(self._execute_write_internal, query, parameters)
+        else:
+            return await self._execute_write_internal(query, parameters)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ServiceUnavailable, SessionExpired)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def _execute_write_internal(self, query: str, parameters: dict[str, Any] | None = None) -> None:
+        """Internal write implementation with retry logic."""
         params = parameters or {}
         async with self._driver.session(database=self._database) as session:
             await session.execute_write(lambda tx: tx.run(query, **params))

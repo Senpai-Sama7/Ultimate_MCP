@@ -6,8 +6,10 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Awaitable, Callable, cast
 
 import structlog
@@ -18,6 +20,7 @@ from fastapi.routing import APIRouter
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastmcp import Context as MCPContext
 from fastmcp import FastMCP
+from fastmcp.prompts import Message, PromptMessage
 from pydantic import AliasChoices, BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from slowapi import Limiter
@@ -89,6 +92,75 @@ PromptDefinition.model_rebuild()
 PromptCatalog.model_rebuild()
 PromptRequest.model_rebuild()
 PromptResponse.model_rebuild()
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+@dataclass(frozen=True)
+class ResourceDefinition:
+    uri: str
+    path: Path
+    title: str
+    description: str
+    mime_type: str = "text/markdown"
+    tags: tuple[str, ...] = ()
+
+    def read_text(self) -> str:
+        if not self.path.is_file():
+            raise FileNotFoundError(f"Resource path does not exist: {self.path}")
+        return self.path.read_text(encoding="utf-8")
+
+
+RESOURCE_DEFINITIONS: list[ResourceDefinition] = [
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/readme",
+        path=PROJECT_ROOT / "README.md",
+        title="Ultimate MCP Overview",
+        description="Primary README with platform capabilities and quick links.",
+        tags=("docs", "overview"),
+    ),
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/quick-start",
+        path=PROJECT_ROOT / "QUICK_START.md",
+        title="Quick Start Guide",
+        description="Three-step quick start instructions for bringing the stack online.",
+        tags=("docs", "setup"),
+    ),
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/agent-handbook",
+        path=PROJECT_ROOT / "AGENTS.md",
+        title="Agent Handbook",
+        description="Repository guidelines for automated coding agents operating this repo.",
+        tags=("docs", "agents"),
+    ),
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/ai-tools-setup",
+        path=PROJECT_ROOT / "AI_TOOLS_SETUP.md",
+        title="AI Tooling Setup",
+        description="How to configure Codex CLI, Gemini, and other MCP-aware clients.",
+        tags=("docs", "setup", "clients"),
+    ),
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/executive-summary",
+        path=PROJECT_ROOT / "docs" / "EXECUTIVE_SUMMARY.md",
+        title="Executive Summary",
+        description="High-level system overview, current status, and roadmap priorities.",
+        tags=("docs", "strategy"),
+    ),
+    ResourceDefinition(
+        uri="resource://ultimate-mcp/architecture",
+        path=PROJECT_ROOT / "docs" / "ARCHITECTURE_VISUAL.md",
+        title="Architecture Overview",
+        description="Visual architecture reference for backend, frontend, and integrations.",
+        tags=("docs", "architecture"),
+    ),
+]
+
+for resource_definition in RESOURCE_DEFINITIONS:
+    if not resource_definition.path.is_file():
+        raise FileNotFoundError(
+            f"Configured MCP resource missing: {resource_definition.path}"
+        )
 
 
 PROMPT_DEFINITIONS: list[PromptDefinition] = [
@@ -184,6 +256,44 @@ PROMPT_DEFINITIONS: list[PromptDefinition] = [
         tags=["integration", "planning"],
     ),
 ]
+
+
+def _truncate_description(text: str, *, limit: int = 160) -> str:
+    cleaned = " ".join(text.strip().split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return f"{cleaned[: limit - 3]}..."
+
+
+def _register_prompt(definition: PromptDefinition) -> None:
+    description = _truncate_description(definition.body, limit=200)
+    tags = set(definition.tags)
+
+    @mcp_server.prompt(
+        definition.slug,
+        title=definition.title,
+        description=description,
+        tags=tags or None,
+    )
+    def _render_prompt() -> list[PromptMessage]:
+        return [Message(definition.body, role="assistant")]
+
+
+def _register_resource(definition: ResourceDefinition) -> None:
+    resource_name = definition.uri.rsplit("/", 1)[-1]
+    tags = set(definition.tags)
+
+    @mcp_server.resource(
+        definition.uri,
+        name=resource_name,
+        title=definition.title,
+        description=definition.description,
+        mime_type=definition.mime_type,
+        tags=tags or None,
+    )
+    def _resource() -> str:
+        return definition.read_text()
+
 
 PROMPT_INDEX: dict[str, PromptDefinition] = {prompt.slug: prompt for prompt in PROMPT_DEFINITIONS}
 
@@ -285,6 +395,12 @@ mcp_server = FastMCP(
         "persistence tooling backed by Neo4j."
     ),
 )
+
+for prompt_definition in PROMPT_DEFINITIONS:
+    _register_prompt(prompt_definition)
+
+for resource_definition in RESOURCE_DEFINITIONS:
+    _register_resource(resource_definition)
 
 
 @mcp_server.tool(name="lint_code", description="Run static analysis on supplied code.")
@@ -606,4 +722,4 @@ async def mcp_get_prompt(payload: PromptRequest, context: MCPContext) -> PromptR
 app.include_router(router)
 
 
-__all__ = ["app", "settings"]
+__all__ = ["app", "settings", "mcp_server", "PROMPT_DEFINITIONS", "RESOURCE_DEFINITIONS"]

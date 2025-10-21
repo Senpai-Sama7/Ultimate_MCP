@@ -1,6 +1,14 @@
 """Utility modules for the MCP server."""
 
-from .cache import CacheEntry, CacheMetrics, CacheWarmer, InMemoryCache
+from .cache import (
+    CacheEntry,
+    CacheMetrics,
+    CacheWarmer,
+    InMemoryCache,
+    QueryCache,
+    get_cache,
+    init_cache,
+)
 from .circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -44,6 +52,7 @@ __all__ = [
     "EnhancedSecurityManager",
     "InMemoryCache",
     "PayloadValidationError",
+    "QueryCache",
     "RateLimitConfig",
     "SecurityContext",
     "SecurityLevel",
@@ -56,6 +65,8 @@ __all__ = [
     "ensure_supported_language",
     "ensure_valid_identifier",
     "ensure_within_limits",
+    "get_cache",
+    "init_cache",
     "sanitize_string",
     "validate_code",
     "validate_language",

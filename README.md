@@ -441,6 +441,28 @@ curl http://localhost:8000/prompts/proceed
 
 ---
 
+## 📚 Built-in MCP Resources
+
+Codex CLI, Claude Desktop, and other MCP clients can now stream the core project manuals directly
+from the server. Each resource is available under the `resource://ultimate-mcp/...` namespace:
+
+| URI | What You Get |
+| --- | --- |
+| `resource://ultimate-mcp/readme` | Project overview, feature list, and navigation links |
+| `resource://ultimate-mcp/quick-start` | Three-step launch checklist for the full stack |
+| `resource://ultimate-mcp/agent-handbook` | Operating guidelines targeted at agentic coding assistants |
+| `resource://ultimate-mcp/ai-tools-setup` | Codex CLI, Gemini CLI, and Amazon Q MCP configuration recipes |
+| `resource://ultimate-mcp/executive-summary` | High-level status brief and roadmap priorities for leadership |
+| `resource://ultimate-mcp/architecture` | Visual architecture walkthrough covering backend, frontend, and graph pieces |
+
+**CLI tip**:
+```bash
+codex mcp resources list ultimate-mcp
+codex mcp resources read ultimate-mcp resource://ultimate-mcp/readme
+```
+
+---
+
 ## 💡 Real-World Examples
 
 ### Example 1: Building a REST API

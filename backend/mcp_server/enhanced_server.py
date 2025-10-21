@@ -280,13 +280,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.audit_logger = audit_logger
         app.state.rbac_manager = rbac_manager
         app.state.jwt_handler = jwt_handler
+        app.state.security_manager = security_manager
+        app.state.metrics_collector = metrics_collector
+        app.state.health_checker = health_checker
+        app.state.neo4j_client = neo4j_client
+        app.state.config = config
+        app.state.start_time = time.time()
         
         logger.info("Audit logging, RBAC, and JWT authentication initialized")
         
         # Start health monitoring
         asyncio.create_task(health_checker.start_monitoring())
-        
-        logger.info("Server startup completed successfully")
+        logger.info("Enhanced Ultimate MCP server started successfully")
         
         yield
         
@@ -295,11 +300,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         raise
     finally:
         # Cleanup resources
-        if neo4j_client:
-            await neo4j_client.close()
-        
         if health_checker:
             await health_checker.stop_monitoring()
+        if neo4j_client:
+            await neo4j_client.close()
         
         logger.info("Server shutdown completed")
 
@@ -726,14 +730,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
             "path": request.url.path,
         },
     )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Record startup time."""
-    app.state.start_time = time.time()
-    logger.info("Enhanced Ultimate MCP server started successfully")
 
 
 if __name__ == "__main__":

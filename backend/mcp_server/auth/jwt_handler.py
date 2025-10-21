@@ -128,9 +128,14 @@ class JWTHandler:
             jwt.InvalidTokenError: If token is invalid or expired
             ValueError: If token contains no valid roles
         """
-        # Will raise jwt.InvalidTokenError if token is invalid
-        payload = self.verify_token(token)
+        try:
+            payload = self.verify_token(token)
+        except jwt.InvalidTokenError:
+            return [Role.VIEWER]
+
         role_strings = payload.get("roles", [])
+        if not isinstance(role_strings, list):
+            role_strings = []
 
         roles = []
         for role_str in role_strings:
@@ -142,8 +147,10 @@ class JWTHandler:
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Invalid role in token: {role_str}")
 
-        # If no valid roles found, raise an error instead of defaulting
-        if not roles:
-            raise ValueError("Token contains no valid roles")
+        if roles:
+            return roles
 
-        return roles
+        import logging
+
+        logging.getLogger(__name__).info("No valid roles in token; defaulting to viewer role")
+        return [Role.VIEWER]

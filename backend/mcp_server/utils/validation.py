@@ -57,6 +57,18 @@ _DANGEROUS_MODULES: set[str] = {
     "asyncio",
 }
 
+_STRICT_NETWORK_MODULES: set[str] = {
+    "socket",
+    "http",
+    "urllib",
+    "urllib2",
+    "urllib3",
+    "requests",
+    "ftplib",
+    "smtplib",
+    "telnetlib",
+}
+
 _DANGEROUS_FUNCTIONS: set[str] = {
     "eval",
     "exec",
@@ -121,9 +133,13 @@ class PythonSecurityChecker(ast.NodeVisitor):
         """Check Import statements."""
         for alias in node.names:
             module_name = alias.name.split(".")[0]  # Get top-level module
-            if module_name in _DANGEROUS_MODULES:
+            if self.strict and module_name in _STRICT_NETWORK_MODULES:
                 self.errors.append(
-                    f"Line {node.lineno}: Dangerous import of '{alias.name}' is not allowed"
+                    f"Line {node.lineno}: dangerous network imports are not allowed ('{alias.name}')"
+                )
+            elif module_name in _DANGEROUS_MODULES:
+                self.errors.append(
+                    f"Line {node.lineno}: dangerous pattern - import of '{alias.name}' is not allowed"
                 )
         self.generic_visit(node)
 
@@ -131,19 +147,24 @@ class PythonSecurityChecker(ast.NodeVisitor):
         """Check ImportFrom statements."""
         if node.module:
             module_name = node.module.split(".")[0]
-            if module_name in _DANGEROUS_MODULES:
+            if self.strict and module_name in _STRICT_NETWORK_MODULES:
                 self.errors.append(
-                    f"Line {node.lineno}: Dangerous import from '{node.module}' is not allowed"
+                    f"Line {node.lineno}: dangerous network imports are not allowed ('{node.module}')"
+                )
+            elif module_name in _DANGEROUS_MODULES:
+                self.errors.append(
+                    f"Line {node.lineno}: dangerous pattern - import from '{node.module}' is not allowed"
                 )
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         """Check function calls."""
         func_name = self._get_call_name(node)
+        module_name = self._get_call_root_module(node)
 
         if func_name in _DANGEROUS_FUNCTIONS:
             self.errors.append(
-                f"Line {node.lineno}: Call to dangerous function '{func_name}' is not allowed"
+                f"Line {node.lineno}: dangerous pattern - call to '{func_name}' is not allowed"
             )
 
         # Check for open() with write modes in strict mode
@@ -153,8 +174,13 @@ class PythonSecurityChecker(ast.NodeVisitor):
                 if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
                     if any(m in mode_arg.value for m in ["w", "a", "x", "+"]):
                         self.errors.append(
-                            f"Line {node.lineno}: File writing with open() is not allowed in strict mode"
+                            f"Line {node.lineno}: dangerous pattern - file writing with open() is not allowed in strict mode"
                         )
+
+        if module_name in _DANGEROUS_MODULES:
+            self.errors.append(
+                f"Line {node.lineno}: dangerous pattern - call on module '{module_name}' is not allowed"
+            )
 
         self.generic_visit(node)
 
@@ -162,13 +188,13 @@ class PythonSecurityChecker(ast.NodeVisitor):
         """Check attribute access."""
         if node.attr in _DANGEROUS_ATTRIBUTES:
             self.errors.append(
-                f"Line {node.lineno}: Access to dangerous attribute '{node.attr}' is not allowed"
+                f"Line {node.lineno}: dangerous pattern - access to attribute '{node.attr}' is not allowed"
             )
 
         # Check for attribute chains like obj.__class__.__bases__
         if isinstance(node.value, ast.Attribute) and node.value.attr in _DANGEROUS_ATTRIBUTES:
             self.errors.append(
-                f"Line {node.lineno}: Chained access to dangerous attributes is not allowed"
+                f"Line {node.lineno}: dangerous pattern - chained access to dangerous attributes is not allowed"
             )
 
         self.generic_visit(node)
@@ -178,7 +204,7 @@ class PythonSecurityChecker(ast.NodeVisitor):
         # Check for direct access to dangerous built-in names
         if node.id in _DANGEROUS_ATTRIBUTES:
             self.errors.append(
-                f"Line {node.lineno}: Access to dangerous name '{node.id}' is not allowed"
+                f"Line {node.lineno}: dangerous pattern - access to name '{node.id}' is not allowed"
             )
         self.generic_visit(node)
 
@@ -188,7 +214,7 @@ class PythonSecurityChecker(ast.NodeVisitor):
         if isinstance(node.slice, ast.Constant):
             if node.slice.value in _DANGEROUS_ATTRIBUTES:
                 self.errors.append(
-                    f"Line {node.lineno}: Subscript access to '{node.slice.value}' is not allowed"
+                    f"Line {node.lineno}: dangerous pattern - subscript access to '{node.slice.value}' is not allowed"
                 )
         self.generic_visit(node)
 
@@ -201,6 +227,18 @@ class PythonSecurityChecker(ast.NodeVisitor):
         elif isinstance(node.func, ast.Call):
             # Nested call like func()()
             return self._get_call_name(node.func)
+        return ""
+
+    def _get_call_root_module(self, node: ast.Call) -> str:
+        """Extract root module name from a call like module.func()."""
+        target = node.func
+        while isinstance(target, ast.Attribute):
+            value = target.value
+            if isinstance(value, ast.Name):
+                return value.id.split(".")[0]
+            target = value
+        if isinstance(target, ast.Name):
+            return target.id.split(".")[0]
         return ""
 
     def check_code(self, tree: ast.AST) -> tuple[bool, list[str], list[str]]:
@@ -326,10 +364,17 @@ def ensure_safe_python_code(code: str, *, strict: bool = False) -> None:
 
     # Fail on any errors
     if not is_safe:
+        network_errors = [error for error in errors if "dangerous network imports" in error]
+        if network_errors:
+            raise CodeValidationError(
+                "Code contains dangerous network imports: " + "; ".join(network_errors[:3])
+            )
+
+    if not is_safe:
         error_summary = "; ".join(errors[:3])  # Show first 3 errors
         if len(errors) > 3:
             error_summary += f" (and {len(errors) - 3} more)"
-        raise CodeValidationError(f"Code contains security violations: {error_summary}")
+        raise CodeValidationError(f"Code contains dangerous pattern: {error_summary}")
 
 
 def ensure_safe_file_path(path: str) -> None:

@@ -48,3 +48,18 @@ async def test_mcp_prompt_tools(server_module):
 
     with pytest.raises(ValueError):
         await mcp_get_prompt(PromptRequest(slug="unknown"), context)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fastmcp_prompt_registration(server_module):
+    prompts = await server_module.mcp_server._prompt_manager.list_prompts()
+    prompt_map = {prompt.name: prompt for prompt in prompts}
+    assert set(prompt_map) >= {definition.slug for definition in PROMPT_DEFINITIONS}
+
+    for definition in PROMPT_DEFINITIONS:
+        prompt = prompt_map[definition.slug]
+        rendered = await prompt.render()
+        assert rendered, f"{definition.slug} prompt should render output"
+        first_message = rendered[0]
+        assert first_message.role == "assistant"
+        assert getattr(first_message.content, "text", "") == definition.body

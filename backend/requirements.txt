@@ -19,3 +19,4 @@ mypy==1.10.0
 ruff==0.5.5
 coverage==7.5.3
 psutil==6.0.0
+tenacity==8.2.3

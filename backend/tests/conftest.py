@@ -44,6 +44,7 @@ def _port_is_open(port: int) -> bool:
 
 @pytest_asyncio.fixture(scope="session")
 def neo4j_service() -> Iterator[str]:
+    subprocess.run(["docker", "compose", "-f", "deployment/docker-compose.yml", "down"], check=False, stdout=subprocess.DEVNULL)
     subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], check=False, stdout=subprocess.DEVNULL)
     subprocess.run(
         [
